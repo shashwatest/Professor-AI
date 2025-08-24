@@ -4,6 +4,7 @@ class TranscriptionSession {
   DateTime? endTime;
   final List<String> transcriptionChunks;
   final List<String> extractedTopics;
+  String basicNotes;
   int wordCount;
   bool isRecording;
 
@@ -13,6 +14,7 @@ class TranscriptionSession {
     this.endTime,
     List<String>? transcriptionChunks,
     List<String>? extractedTopics,
+    this.basicNotes = '',
     this.wordCount = 0,
     this.isRecording = false,
   })  : transcriptionChunks = transcriptionChunks ?? [],
@@ -35,6 +37,18 @@ class TranscriptionSession {
     if (!extractedTopics.contains(topic)) {
       extractedTopics.add(topic);
     }
+  }
+
+  void addToBasicNotes(String content) {
+    if (basicNotes.isNotEmpty) {
+      basicNotes += '\n\n$content';
+    } else {
+      basicNotes = content;
+    }
+  }
+
+  void updateBasicNotes(String notes) {
+    basicNotes = notes;
   }
 
   void endSession() {

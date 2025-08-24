@@ -44,40 +44,64 @@ Transcription: $transcription
   @override
   Future<String> generateEnhancedNotes(String transcription, String educationLevel) async {
     final prompt = '''
-You are an expert academic note-taker. Create comprehensive, well-structured study notes from this classroom transcription for a $educationLevel student.
+You are an AI academic assistant specializing in distilling complex information. Your task is to transform the provided classroom transcription into a clear, comprehensive, and well-structured set of study notes for a `$educationLevel` student.
 
-**Requirements:**
-- Extract ALL key concepts, definitions, and explanations
-- Include detailed formulas with step-by-step explanations
-- Organize content with clear headings and subheadings
-- Add practical examples and applications
-- Include study tips and memory aids
-- Make notes comprehensive enough for exam preparation
-- Use bullet points, numbered lists, and formatting for clarity
+**Primary Instructions:**
+1.  **Analyze and Clean:** First, read the entire transcription to understand the core topics. You MUST ignore filler words (e.g., 'um', 'like', 'uh'), conversational tangents, and repeated phrases to focus solely on the academic content.
+2.  **Synthesize and Structure:** Do not just extract text. Rephrase concepts in clear, simple language suitable for the student's level. Organize all extracted information logically into the format specified below.
+3.  **Be Comprehensive:** The final notes must be a complete study guide for exam preparation based ONLY on the provided text.
 
-**Format your response as:**
+**Required Output Format:**
 
-# [Subject/Topic Title]
+# [Infer the Main Topic of the Lecture]
+> **Date:** [Insert today's date: August 25, 2025]
 
-## Key Concepts
-[Detailed explanations of main concepts]
+## Executive Summary
+A concise, 3-5 bullet point summary of the lecture's most critical takeaways.
 
-## Important Formulas & Equations
-[All formulas with explanations and when to use them]
+---
 
-## Detailed Explanations
-[Step-by-step breakdowns of complex topics]
+## Key Terminology
+Create a table with key terms/vocabulary mentioned and their precise definitions.
 
-## Examples & Applications
-[Real-world examples and practice problems]
+| Term | Definition |
+| :--- | :--- |
+| [Term 1] | [Clear definition from the text] |
+| [Term 2] | [Clear definition from the text] |
 
-## Study Tips & Memory Aids
-[Mnemonics, tips for remembering key points]
+---
 
-## Summary
-[Concise overview of all main points]
+## Core Concepts & Detailed Explanations
+This is the main body of the notes. Use nested bullet points to create a clear hierarchy. **Bold** all key terms.
+* **Main Concept 1**
+    * Detailed explanation paraphrased for clarity.
+    * Supporting point or sub-topic.
+* **Main Concept 2**
+    * Detailed explanation.
 
-Transcription: $transcription
+---
+
+## Formulas & Equations (If applicable)
+For each formula mentioned:
+1.  Present the formula using LaTeX: \$\$ [Formula] \$\$
+2.  **Variables:** List and explain each variable.
+3.  **Application:** Briefly explain what the formula is used for.
+
+---
+
+## Practical Examples & Applications
+Detail any real-world examples, case studies, or practice problems discussed. If the transcription lacks a clear example for a key concept, create one simple, illustrative example.
+
+---
+
+## Potential Exam Questions
+Based on the lecture content, generate 2-3 potential exam questions (e.g., short answer, multiple-choice) to help the student test their understanding.
+
+---
+
+**Transcription to Process:**
+$transcription
+
 ''';
 
     try {

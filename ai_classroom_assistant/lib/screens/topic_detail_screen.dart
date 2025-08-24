@@ -6,33 +6,40 @@ import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:markdown/markdown.dart' as md;
 
 import '../services/ai_service.dart';
+import '../services/document_service.dart';
 import '../widgets/glass_container.dart';
 
 class TopicDetailScreen extends StatefulWidget {
   final String topic;
   final AIService aiService;
   final String educationLevel;
+  final Function(String)? onAddToNotes;
 
   const TopicDetailScreen({
     super.key,
     required this.topic,
     required this.aiService,
     required this.educationLevel,
+    this.onAddToNotes,
   });
 
   @override
   State<TopicDetailScreen> createState() => _TopicDetailScreenState();
 }
 
-class _TopicDetailScreenState extends State<TopicDetailScreen> {
+class _TopicDetailScreenState extends State<TopicDetailScreen> with TickerProviderStateMixin {
+  late TabController _tabController;
   String? _topicDetails;
+  List<DocumentChunk> _documentChunks = [];
   bool _isLoading = true;
   String? _error;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     _loadTopicDetails();
+    _loadDocumentContent();
   }
 
   Future<void> _loadTopicDetails() async {
@@ -53,6 +60,10 @@ class _TopicDetailScreenState extends State<TopicDetailScreen> {
     }
   }
 
+  void _loadDocumentContent() {
+    _documentChunks = DocumentService.findRelevantChunks(widget.topic);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -71,10 +82,20 @@ class _TopicDetailScreenState extends State<TopicDetailScreen> {
           child: Column(
             children: [
               _buildHeader(),
+              _buildTabBar(),
               Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: _buildContent(),
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: _buildLLMContent(),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: _buildDocumentContent(),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -118,12 +139,61 @@ class _TopicDetailScreenState extends State<TopicDetailScreen> {
               ),
             ),
           ),
+          if (widget.onAddToNotes != null)
+            IconButton(
+              onPressed: () {
+                final content = _topicDetails ?? '';
+                final documentContent = _documentChunks.map((chunk) => 
+                  'Page ${chunk.pageNumber}: ${chunk.content}').join('\n\n');
+                final fullContent = '## ${widget.topic}\n\n$content${documentContent.isNotEmpty ? '\n\n### From Document\n$documentContent' : ''}';
+                widget.onAddToNotes!(fullContent);
+                Navigator.pop(context);
+              },
+              icon: const Icon(Icons.note_add),
+              tooltip: 'Add to Notes',
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildContent() {
+  Widget _buildTabBar() {
+    return GlassContainer(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: Colors.white.withOpacity(0.2),
+          ),
+        ),
+        child: TabBar(
+          controller: _tabController,
+          indicator: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            gradient: LinearGradient(
+              colors: [
+                Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                Theme.of(context).colorScheme.secondary.withOpacity(0.3),
+              ],
+            ),
+          ),
+          tabs: [
+            const Tab(
+              icon: Icon(Icons.psychology),
+              text: 'AI Knowledge',
+            ),
+            Tab(
+              icon: const Icon(Icons.description),
+              text: DocumentService.hasDocument ? 'Document' : 'No Document',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLLMContent() {
     if (_isLoading) {
       return const GlassContainer(
         child: Center(
@@ -223,6 +293,142 @@ class _TopicDetailScreenState extends State<TopicDetailScreen> {
         ),
       ),
     ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.2, end: 0);
+  }
+
+  Widget _buildDocumentContent() {
+    if (!DocumentService.hasDocument) {
+      return GlassContainer(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.description_outlined,
+                size: 64,
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'No Document Uploaded',
+                style: TextStyle(
+                  fontSize: 18,
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Upload a document to see relevant content for this topic',
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_documentChunks.isEmpty) {
+      return GlassContainer(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.search_off,
+                size: 64,
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'No Relevant Content Found',
+                style: TextStyle(
+                  fontSize: 18,
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'The uploaded document "${DocumentService.currentDocumentName}" doesn\'t contain relevant information about "${widget.topic}"',
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return GlassContainer(
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.description,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'From Document: ${DocumentService.currentDocumentName}',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            ..._documentChunks.map((chunk) => Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.2),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.bookmark_outline,
+                        size: 16,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Page ${chunk.pageNumber}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  SelectableText(
+                    chunk.content,
+                    style: const TextStyle(fontSize: 16, height: 1.5),
+                  ),
+                ],
+              ),
+            )),
+          ],
+        ),
+      ),
+    ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.2, end: 0);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   /// ---------- Robust renderer ----------

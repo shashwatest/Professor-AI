@@ -11,6 +11,8 @@ import 'settings_screen.dart';
 import '../services/session_storage_service.dart';
 import '../services/error_handler_service.dart';
 import '../services/settings_service.dart';
+import '../services/document_service.dart';
+import 'document_upload_screen.dart';
 
 class TranscriptionScreen extends StatefulWidget {
   const TranscriptionScreen({super.key});
@@ -182,6 +184,14 @@ class _TranscriptionScreenState extends State<TranscriptionScreen> {
           topic: topic,
           aiService: _aiService!,
           educationLevel: _educationLevel,
+          onAddToNotes: (content) {
+            if (_currentSession != null) {
+              _currentSession!.addToBasicNotes(content);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Added to notes')),
+              );
+            }
+          },
         ),
       ),
     );
@@ -283,6 +293,34 @@ class _TranscriptionScreenState extends State<TranscriptionScreen> {
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const Spacer(),
+          if (DocumentService.hasDocument)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.description,
+                    size: 12,
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    DocumentService.currentDocumentName?.split('.').first.substring(0, 8) ?? 'Doc',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(width: 8),
           Text(
             _selectedProvider.name.toUpperCase(),
             style: TextStyle(
@@ -292,6 +330,16 @@ class _TranscriptionScreenState extends State<TranscriptionScreen> {
             ),
           ),
           const SizedBox(width: 8),
+          IconButton(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const DocumentUploadScreen(),
+              ),
+            ).then((_) => setState(() {})),
+            icon: const Icon(Icons.upload_file),
+            tooltip: 'Upload Document',
+          ),
           IconButton(
             onPressed: () => Navigator.push(
               context,
