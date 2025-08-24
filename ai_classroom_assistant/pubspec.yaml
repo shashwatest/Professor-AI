@@ -27,6 +27,10 @@ dependencies:
   pdf: ^3.10.4
   share_plus: ^11.1.0
 
+  flutter_markdown: ^0.7.3
+  flutter_math_fork: ^0.7.2
+  markdown: ^7.1.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

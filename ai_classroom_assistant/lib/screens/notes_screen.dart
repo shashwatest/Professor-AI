@@ -4,6 +4,7 @@ import 'package:share_plus/share_plus.dart';
 import '../models/transcription_session.dart';
 import '../services/ai_service.dart';
 import '../services/export_service.dart';
+import '../services/error_handler_service.dart';
 import '../widgets/glass_container.dart';
 
 class NotesScreen extends StatefulWidget {
@@ -43,9 +44,12 @@ class _NotesScreenState extends State<NotesScreen> with TickerProviderStateMixin
     });
 
     try {
-      final notes = await widget.aiService!.generateEnhancedNotes(
-        widget.session.fullTranscription,
-        widget.educationLevel,
+      final notes = await ErrorHandlerService.withRetry(
+        () => widget.aiService!.generateEnhancedNotes(
+          widget.session.fullTranscription,
+          widget.educationLevel,
+        ),
+        shouldRetry: ErrorHandlerService.shouldRetryNetworkError,
       );
       setState(() {
         _aiNotes = notes;
@@ -53,7 +57,7 @@ class _NotesScreenState extends State<NotesScreen> with TickerProviderStateMixin
       });
     } catch (e) {
       setState(() {
-        _error = e.toString();
+        _error = ErrorHandlerService.getErrorMessage(e);
         _isGeneratingAI = false;
       });
     }

@@ -6,6 +6,11 @@ import '../services/ai_service.dart';
 import '../widgets/glass_container.dart';
 import 'topic_detail_screen.dart';
 import 'notes_screen.dart';
+import 'session_history_screen.dart';
+import 'settings_screen.dart';
+import '../services/session_storage_service.dart';
+import '../services/error_handler_service.dart';
+import '../services/settings_service.dart';
 
 class TranscriptionScreen extends StatefulWidget {
   const TranscriptionScreen({super.key});
@@ -31,6 +36,24 @@ class _TranscriptionScreenState extends State<TranscriptionScreen> {
   void initState() {
     super.initState();
     _initializeSpeechService();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    try {
+      _selectedProvider = await SettingsService.getDefaultProvider();
+      _educationLevel = await SettingsService.getEducationLevel();
+      _singleSpeakerMode = await SettingsService.getSingleSpeakerMode();
+      
+      final apiKey = await SettingsService.getAPIKey(_selectedProvider);
+      if (apiKey != null) {
+        _apiKey = apiKey;
+      }
+      
+      setState(() {});
+    } catch (e) {
+      // Settings loading failed, use defaults
+    }
   }
 
   void _initializeSpeechService() {
@@ -67,11 +90,14 @@ class _TranscriptionScreenState extends State<TranscriptionScreen> {
   }
 
   Future<void> _startRecording() async {
-    if (_apiKey.isEmpty) {
+    // Check if we have API key for selected provider
+    final apiKey = await SettingsService.getAPIKey(_selectedProvider);
+    if (apiKey == null || apiKey.isEmpty) {
       _showApiKeyDialog();
       return;
     }
 
+    _apiKey = apiKey;
     _aiService = AIServiceFactory.create(_selectedProvider, _apiKey);
     
     final initialized = await _speechService.initialize();
@@ -95,6 +121,15 @@ class _TranscriptionScreenState extends State<TranscriptionScreen> {
       setState(() {
         _currentSession!.endSession();
       });
+      
+      // Save session to history
+      try {
+        await SessionStorageService.saveSession(_currentSession!);
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Session saved locally: ${ErrorHandlerService.getErrorMessage(e)}')),
+        );
+      }
     }
   }
 
@@ -106,9 +141,12 @@ class _TranscriptionScreenState extends State<TranscriptionScreen> {
     });
 
     try {
-      final topics = await _aiService!.extractTopics(
-        _currentSession!.fullTranscription,
-        _educationLevel,
+      final topics = await ErrorHandlerService.withRetry(
+        () => _aiService!.extractTopics(
+          _currentSession!.fullTranscription,
+          _educationLevel,
+        ),
+        shouldRetry: ErrorHandlerService.shouldRetryNetworkError,
       );
       
       setState(() {
@@ -119,7 +157,13 @@ class _TranscriptionScreenState extends State<TranscriptionScreen> {
       });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to extract topics: $e')),
+        SnackBar(
+          content: Text(ErrorHandlerService.getErrorMessage(e)),
+          action: SnackBarAction(
+            label: 'Retry',
+            onPressed: _extractTopics,
+          ),
+        ),
       );
     } finally {
       setState(() {
@@ -153,41 +197,12 @@ class _TranscriptionScreenState extends State<TranscriptionScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Enter ${_selectedProvider.name.toUpperCase()} API Key',
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              const Text(
+                'API Key Required',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 20),
-              DropdownButtonFormField<AIProvider>(
-                initialValue: _selectedProvider,
-                decoration: const InputDecoration(
-                  labelText: 'AI Provider',
-                  border: OutlineInputBorder(),
-                ),
-                items: AIProvider.values
-                    .where((provider) => AIServiceFactory.create(provider, 'test') != null)
-                    .map((provider) => DropdownMenuItem(
-                          value: provider,
-                          child: Text(provider.name.toUpperCase()),
-                        ))
-                    .toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedProvider = value!;
-                    _apiKey = '';
-                  });
-                },
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                onChanged: (value) => _apiKey = value,
-                decoration: InputDecoration(
-                  hintText: _selectedProvider == AIProvider.gemini ? 'AIza...' : 'sk-...',
-                  border: const OutlineInputBorder(),
-                  labelText: 'API Key',
-                ),
-                obscureText: true,
-              ),
+              const SizedBox(height: 12),
+              const Text('Please set up your API keys in Settings to start recording.'),
               const SizedBox(height: 20),
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
@@ -200,11 +215,14 @@ class _TranscriptionScreenState extends State<TranscriptionScreen> {
                   ElevatedButton(
                     onPressed: () {
                       Navigator.pop(context);
-                      if (_apiKey.isNotEmpty) {
-                        _startRecording();
-                      }
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const SettingsScreen(),
+                        ),
+                      ).then((_) => _loadSettings());
                     },
-                    child: const Text('Save'),
+                    child: const Text('Open Settings'),
                   ),
                 ],
               ),
@@ -274,6 +292,29 @@ class _TranscriptionScreenState extends State<TranscriptionScreen> {
             ),
           ),
           const SizedBox(width: 8),
+          IconButton(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => SessionHistoryScreen(
+                  aiService: _aiService,
+                  educationLevel: _educationLevel,
+                ),
+              ),
+            ),
+            icon: const Icon(Icons.history),
+            tooltip: 'Session History',
+          ),
+          IconButton(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const SettingsScreen(),
+              ),
+            ).then((_) => _loadSettings()),
+            icon: const Icon(Icons.settings),
+            tooltip: 'Settings',
+          ),
           _buildStatusIndicator(),
         ],
       ),
