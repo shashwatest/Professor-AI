@@ -1,0 +1,36 @@
+name: ai_classroom_assistant
+description: AI-powered classroom assistant with real-time transcription and topic extraction
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: ">=3.10.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # Core functionality
+  speech_to_text: ^7.3.0
+  permission_handler: ^12.0.1
+  flutter_secure_storage: ^9.0.0
+  http: ^1.1.0
+  
+  # UI and animations
+  flutter_animate: ^4.2.0
+  
+  # Storage and data
+  shared_preferences: ^2.2.2
+  path_provider: ^2.1.1
+  
+  # Export functionality
+  pdf: ^3.10.4
+  share_plus: ^11.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
