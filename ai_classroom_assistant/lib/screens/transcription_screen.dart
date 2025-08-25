@@ -59,7 +59,7 @@ class _TranscriptionScreenState extends State<TranscriptionScreen> {
   }
 
   void _initializeSpeechService() {
-    _speechService.onResult = _onSpeechResult;
+    _speechService.onPartial = _onSpeechResult;
     _speechService.onError = _onSpeechError;
     _speechService.onListeningStateChanged = (listening) {
       setState(() {
