@@ -60,9 +60,24 @@ class _TopicDetailScreenState extends State<TopicDetailScreen> with TickerProvid
     }
   }
 
-  void _loadDocumentContent() {
-    _documentChunks = DocumentService.findRelevantChunks(widget.topic);
+
+  Future<void> _loadDocumentContent() async {
+  try {
+    final chunks = await DocumentService.retrieveRelevantChunks(widget.topic, topK: 5);
+    setState(() {
+      _documentChunks = chunks;
+    });
+  } catch (e) {
+    setState(() {
+      _documentChunks = [];
+    });
+    debugPrint('Error loading document content: $e');
   }
+}
+
+  // void _loadDocumentContent() {
+  //   _documentChunks = DocumentService.findRelevantChunks(widget.topic);
+  // }
 
   @override
   Widget build(BuildContext context) {

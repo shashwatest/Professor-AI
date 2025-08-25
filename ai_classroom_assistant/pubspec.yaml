@@ -29,6 +29,11 @@ dependencies:
   file_picker: ^8.0.0
   syncfusion_flutter_pdf: ^27.1.48
   archive: ^3.4.10
+  crypto: ^3.0.3
+  path: ^1.8.3
+
+  # Markdown
+  flutter_markdown_selectionarea: ^0.6.17+1
 
   flutter_markdown: ^0.7.3
   flutter_math_fork: ^0.7.2

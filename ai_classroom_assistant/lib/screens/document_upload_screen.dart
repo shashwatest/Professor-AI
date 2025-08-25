@@ -19,7 +19,7 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
     });
 
     try {
-      final success = await DocumentService.uploadDocument();
+      final success = await DocumentService.uploadDocumentAndIndex();
       if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
