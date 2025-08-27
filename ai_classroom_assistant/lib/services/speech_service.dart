@@ -78,7 +78,7 @@ class SpeechService {
     bool onDevice = false,
     bool resetSessionText = false,
   }) async {
-    pauseFor ??= const Duration(milliseconds: 700);
+    pauseFor ??= const Duration(milliseconds: 400);
 
     if (_isDesktop) {
       onError?.call('Speech recognition is not supported on desktop platforms.');
