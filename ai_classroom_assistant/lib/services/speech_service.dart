@@ -76,7 +76,7 @@ class SpeechService {
     Duration listenFor = const Duration(minutes: 10),
     bool onDevice = false,
   }) async {
-    pauseFor ??= const Duration(milliseconds: 700);
+    //pauseFor ??= const Duration(milliseconds: 700);
 
     if (_isDesktop) {
       onError?.call('Speech recognition is not supported on desktop platforms.');
@@ -100,7 +100,7 @@ class SpeechService {
       await _speechToText.listen(
         onResult: _handleResult,
         listenFor: listenFor,
-        pauseFor: pauseFor,
+        //pauseFor: pauseFor,
         partialResults: true,
         cancelOnError: true,
         listenMode: ListenMode.dictation,
