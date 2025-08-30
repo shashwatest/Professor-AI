@@ -28,21 +28,28 @@ class CurrentSessionScreen extends StatefulWidget {
   State<CurrentSessionScreen> createState() => _CurrentSessionScreenState();
 }
 
-class _CurrentSessionScreenState extends State<CurrentSessionScreen> {
+class _CurrentSessionScreenState extends State<CurrentSessionScreen> with AutomaticKeepAliveClientMixin {
+  // Singleton speech service for better performance
   final SpeechService _speechService = SpeechService();
   final TranscriptionTrigger _transcriptionTrigger = TranscriptionTrigger();
+  
+  // State variables
   TranscriptionSession? _currentSession;
   AIService? _aiService;
-
   bool _isListening = false;
   String _educationLevel = 'Undergraduate';
   String _apiKey = '';
   AIProvider _selectedProvider = AIProvider.gemini;
   List<ExtractedContentItem> _extractedContent = [];
   bool _isExtracting = false;
-
-  // live transcript (combined committed + partial) emitted by SpeechService
   String _liveTranscript = '';
+
+  // Performance optimization - cache expensive operations
+  String? _cachedFormattedTime;
+  DateTime? _lastTimeUpdate;
+
+  @override
+  bool get wantKeepAlive => true; // Keep state alive for better performance
 
   @override
   void initState() {
@@ -71,102 +78,192 @@ class _CurrentSessionScreenState extends State<CurrentSessionScreen> {
   }
 
   void _initializeSpeechService() {
-    // prefer the combined transcript callback to avoid duplication issues
+    // Optimized callback assignments with null checks
     _speechService.onTranscriptChanged = _onTranscriptChanged;
     _speechService.onError = _onSpeechError;
-    _speechService.onListeningStateChanged = (listening) {
-      if (!mounted) return;
-      setState(() {
-        _isListening = listening;
-      });
-    };
+    _speechService.onListeningStateChanged = _onListeningStateChanged;
   }
 
-  // Called with the service-managed combined transcript (committed + partial)
+  // Optimized listening state handler
+  void _onListeningStateChanged(bool listening) {
+    if (!mounted || _isListening == listening) return;
+    setState(() {
+      _isListening = listening;
+    });
+  }
+
+  // Optimized transcript change handler with proper preservation
   void _onTranscriptChanged(String combined) {
     if (!mounted) return;
     
-    setState(() {
-      _liveTranscript = combined;
-      if (_currentSession != null) {
-        // Replace stored transcription with the latest combined text to keep
-        // session.fullTranscription / wordCount accurate.
-        _currentSession!.transcriptionChunks.clear();
-        if (combined.trim().isNotEmpty) {
-          _currentSession!.addTranscription(combined.trim());
+    // Only update if the transcript has actually changed
+    if (combined != _liveTranscript) {
+      setState(() {
+        _liveTranscript = combined;
+        
+        if (_currentSession != null && combined.trim().isNotEmpty) {
+          final trimmed = combined.trim();
+          
+          // Update session transcription - this maintains the full transcript
+          // across multiple recording cycles
+          if (_currentSession!.fullTranscription != trimmed) {
+            _currentSession!.transcriptionChunks.clear();
+            _currentSession!.addTranscription(trimmed);
+          }
         }
-      }
-    });
+      });
 
-    // Auto-extract topics using trigger logic
-    if (_currentSession != null &&
-        _aiService != null &&
-        !_isExtracting &&
-        _transcriptionTrigger.shouldTrigger(_currentSession!.wordCount)) {
-      _extractTopics();
+      // Optimized auto-extract with debouncing
+      if (_shouldTriggerExtraction()) {
+        _extractTopics();
+      }
     }
   }
 
+  // Helper method for extraction trigger logic
+  bool _shouldTriggerExtraction() {
+    return _currentSession != null &&
+           _aiService != null &&
+           !_isExtracting &&
+           _transcriptionTrigger.shouldTrigger(_currentSession!.wordCount);
+  }
+
   void _onSpeechError(String error) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Speech error: $error')),
+      SnackBar(
+        content: Text('Speech error: $error'),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  void _clearTranscription() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear Transcription'),
+        content: const Text('Are you sure you want to clear all transcription? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              setState(() {
+                _speechService.clearTranscript();
+                _liveTranscript = '';
+                _extractedContent.clear();
+                _currentSession = null;
+                _transcriptionTrigger.reset();
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Transcription cleared')),
+              );
+            },
+            child: const Text('Clear'),
+          ),
+        ],
+      ),
     );
   }
 
   Future<void> _startRecording() async {
+    if (_isListening) return; // Prevent double-start
+
     // Show noise cancellation warning if needed
     await NoiseCancellationWarningDialog.showIfNeeded(context);
     
-    // Check API key for selected provider
-    final apiKey = await SettingsService.getAPIKey(_selectedProvider);
-    if (apiKey == null || apiKey.isEmpty) {
-      _showApiKeyDialog();
-      return;
+    // Optimized API key check with caching
+    if (_apiKey.isEmpty) {
+      final apiKey = await SettingsService.getAPIKey(_selectedProvider);
+      if (apiKey == null || apiKey.isEmpty) {
+        _showApiKeyDialog();
+        return;
+      }
+      _apiKey = apiKey;
     }
 
-    _apiKey = apiKey;
-    _aiService = AIServiceFactory.create(_selectedProvider, _apiKey);
+    // Create AI service only if not already created
+    _aiService ??= AIServiceFactory.create(_selectedProvider, _apiKey);
 
-    final initialized = await _speechService.initialize();
-    if (!initialized) return;
+    // Optimized initialization check
+    if (!_speechService.isInitialized) {
+      final initialized = await _speechService.initialize();
+      if (!initialized) return;
+    }
 
+    // Ensure speech service is fully stopped before starting
+    if (_speechService.isListening) {
+      await _speechService.stopListening();
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+
+    // Optimized session management
+    final now = DateTime.now();
     setState(() {
-      _currentSession = TranscriptionSession(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        startTime: DateTime.now(),
-        isRecording: true,
-      );
-      _extractedContent.clear();
-      _liveTranscript = '';
-      _transcriptionTrigger.reset(); // Reset trigger for new session
+      if (_currentSession == null) {
+        _currentSession = TranscriptionSession(
+          id: now.millisecondsSinceEpoch.toString(),
+          startTime: now,
+          isRecording: true,
+        );
+        // Preserve existing transcript
+        if (_liveTranscript.isNotEmpty) {
+          _currentSession!.addTranscription(_liveTranscript);
+        }
+      } else {
+        _currentSession!.isRecording = true;
+      }
+      _transcriptionTrigger.reset();
     });
 
-    // Start listening. resetSessionText ensures internal transcript starts fresh.
+    // FIXED: Preserve existing transcript when starting new recording session
+    if (_liveTranscript.isNotEmpty && _speechService.currentTranscript != _liveTranscript) {
+      _speechService.setExistingTranscript(_liveTranscript);
+    }
+
+    // Start listening with optimized parameters
     await _speechService.startListening(
-      resetSessionText: true,
-      pauseFor: const Duration(milliseconds: 700),
+      resetSessionText: false,
+      //pauseFor: const Duration(milliseconds: 700),
       listenFor: const Duration(hours: 2),
       onDevice: false,
     );
   }
 
   Future<void> _stopRecording() async {
+    if (!_isListening) return; // Prevent double-stop
+
     await _speechService.stopListening();
+    
     if (_currentSession != null) {
       setState(() {
-        _currentSession!.endSession();
+        _currentSession!.isRecording = false;
       });
 
-      // Save session to history
+      // Optimized session saving with better error handling
       try {
         await SessionStorageService.saveSession(_currentSession!);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Session saved successfully')),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Session saved successfully'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Session saved locally: ${ErrorHandlerService.getErrorMessage(e)}')),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Session saved locally: ${ErrorHandlerService.getErrorMessage(e)}'),
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
       }
     }
   }
@@ -277,6 +374,8 @@ class _CurrentSessionScreenState extends State<CurrentSessionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Required for AutomaticKeepAliveClientMixin
+    
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -305,7 +404,7 @@ class _CurrentSessionScreenState extends State<CurrentSessionScreen> {
                   const SizedBox(height: 20),
                   _buildContentView(),
                 ],
-                if (_currentSession != null && _currentSession!.wordCount > 0) ...[
+                if (_currentSession?.wordCount != null && _currentSession!.wordCount > 0) ...[
                   const SizedBox(height: 20),
                   _buildNotesButton(),
                 ],
@@ -525,81 +624,100 @@ class _CurrentSessionScreenState extends State<CurrentSessionScreen> {
 
   Widget _buildControls() {
     return GlassContainer(
-      child: Row(
+      child: Column(
         children: [
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: _isListening
-                      ? [Colors.red.withOpacity(0.8), Colors.red.withOpacity(0.6)]
-                      : [Colors.green.withOpacity(0.8), Colors.green.withOpacity(0.6)],
-                ),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: (_isListening ? Colors.red : Colors.green).withOpacity(0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: ElevatedButton.icon(
-                onPressed: _isListening ? _stopRecording : _startRecording,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.transparent,
-                  shadowColor: Colors.transparent,
-                  padding: const EdgeInsets.all(18),
-                ),
-                icon: Icon(
-                  _isListening ? Icons.stop : Icons.play_arrow,
-                  color: Colors.white,
-                  size: 24,
-                ),
-                label: Text(
-                  _isListening ? 'Stop Recording' : 'Start Recording',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Theme.of(context).colorScheme.secondary.withOpacity(0.8),
-                  Theme.of(context).colorScheme.tertiary.withOpacity(0.8),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: ElevatedButton.icon(
-              onPressed: (_currentSession?.wordCount ?? 0) > 0 && !_isExtracting ? _extractTopics : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                shadowColor: Colors.transparent,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-              ),
-              icon: _isExtracting
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: _isListening
+                          ? [Colors.red.withOpacity(0.8), Colors.red.withOpacity(0.6)]
+                          : [Colors.green.withOpacity(0.8), Colors.green.withOpacity(0.6)],
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: (_isListening ? Colors.red : Colors.green).withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
                       ),
-                    )
-                  : const Icon(Icons.auto_awesome, color: Colors.white, size: 20),
-              label: const Text(
-                'Extract Now',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
+                    ],
+                  ),
+                  child: ElevatedButton.icon(
+                    onPressed: _isListening ? _stopRecording : _startRecording,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      shadowColor: Colors.transparent,
+                      padding: const EdgeInsets.all(18),
+                    ),
+                    icon: Icon(
+                      _isListening ? Icons.stop : Icons.play_arrow,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                    label: Text(
+                      _isListening ? 'Stop Recording' : 'Start Recording',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Theme.of(context).colorScheme.secondary.withOpacity(0.8),
+                      Theme.of(context).colorScheme.tertiary.withOpacity(0.8),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: ElevatedButton.icon(
+                  onPressed: (_currentSession?.wordCount ?? 0) > 0 && !_isExtracting ? _extractTopics : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                  ),
+                  icon: _isExtracting
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : const Icon(Icons.auto_awesome, color: Colors.white, size: 20),
+                  label: const Text(
+                    'Extract Now',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _liveTranscript.isNotEmpty && !_isListening ? _clearTranscription : null,
+              icon: const Icon(Icons.clear_all),
+              label: const Text('Clear Transcription'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.all(16),
+                side: BorderSide(
+                  color: Theme.of(context).colorScheme.outline.withOpacity(0.5),
                 ),
               ),
             ),
@@ -636,7 +754,7 @@ class _CurrentSessionScreenState extends State<CurrentSessionScreen> {
               child: Text(
                 _liveTranscript.isNotEmpty 
                     ? _liveTranscript 
-                    : 'Start recording to see live transcription...',
+                    : 'Start recording to see live transcription...\n\nTranscription will be preserved when you stop and start recording again. Use "Clear Transcription" to start fresh.',
                 style: TextStyle(
                   fontSize: 16,
                   height: 1.6,
@@ -771,13 +889,30 @@ class _CurrentSessionScreenState extends State<CurrentSessionScreen> {
     ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.3, end: 0);
   }
 
+  // Optimized time formatting with caching
   String _formatTime(DateTime dateTime) {
-    return '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+    if (_lastTimeUpdate != null && 
+        _lastTimeUpdate!.hour == dateTime.hour && 
+        _lastTimeUpdate!.minute == dateTime.minute &&
+        _cachedFormattedTime != null) {
+      return _cachedFormattedTime!;
+    }
+    
+    _lastTimeUpdate = dateTime;
+    _cachedFormattedTime = '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+    return _cachedFormattedTime!;
   }
 
   @override
   void dispose() {
-    _speechService.dispose();
+    // Clean up speech service callbacks to prevent memory leaks
+    _speechService.onTranscriptChanged = null;
+    _speechService.onError = null;
+    _speechService.onListeningStateChanged = null;
+    
+    // Note: Don't dispose the singleton speech service itself
+    // as it may be used by other instances
+    
     super.dispose();
   }
 }
