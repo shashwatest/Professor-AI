@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'screens/transcription_screen.dart';
+import 'screens/app_shell.dart';
 import 'services/document_service.dart';
 import 'services/embeddings/embeddings_service.dart';
 import 'services/vectorstore/vector_store.dart';
@@ -50,7 +50,7 @@ class AIClassroomAssistant extends StatelessWidget {
           brightness: Brightness.dark,
         ),
       ),
-      home: const TranscriptionScreen(),
+      home: const AppShell(),
     );
   }
 }

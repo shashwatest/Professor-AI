@@ -103,8 +103,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Theme.of(context).colorScheme.primary.withOpacity(0.1),
-              Theme.of(context).colorScheme.secondary.withOpacity(0.1),
+              Theme.of(context).colorScheme.primary.withOpacity(0.05),
+              Theme.of(context).colorScheme.secondary.withOpacity(0.05),
             ],
           ),
         ),
@@ -114,7 +114,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _buildHeader(),
               Expanded(
                 child: _isLoading
-                    ? const Center(child: CircularProgressIndicator())
+                    ? Center(
+                        child: Container(
+                          padding: const EdgeInsets.all(32),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              CircularProgressIndicator(
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Loading settings...',
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
                     : _buildSettingsContent(),
               ),
             ],
@@ -129,17 +148,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
       margin: const EdgeInsets.all(16),
       child: Row(
         children: [
-          IconButton(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back),
+          Icon(
+            Icons.settings,
+            size: 24,
+            color: Theme.of(context).colorScheme.primary,
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 12),
           const Expanded(
             child: Text(
               'Settings',
               style: TextStyle(
                 fontSize: 20,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -152,16 +172,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
               borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: ElevatedButton(
               onPressed: _saveSettings,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.transparent,
                 shadowColor: Colors.transparent,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               ),
               child: const Text(
-                'Save',
+                'Save Changes',
                 style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
               ),
             ),
@@ -177,8 +204,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Column(
         children: [
           _buildAPIKeysSection(),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
           _buildPreferencesSection(),
+          const SizedBox(height: 24),
+          _buildAboutSection(),
         ],
       ),
     );
@@ -191,18 +220,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           Row(
             children: [
-              Icon(
-                Icons.key,
-                color: Theme.of(context).colorScheme.primary,
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.key,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 20,
+                ),
               ),
-              const SizedBox(width: 8),
-              const Text(
-                'API Keys',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'API Configuration',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
+          Text(
+            'Configure your AI service providers to enable transcription and analysis features.',
+            style: TextStyle(
+              fontSize: 14,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 20),
           ...AIProvider.values.map((provider) => _buildAPIKeyField(provider)),
         ],
       ),
@@ -267,30 +315,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           Row(
             children: [
-              Icon(
-                Icons.tune,
-                color: Theme.of(context).colorScheme.primary,
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.secondary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.tune,
+                  color: Theme.of(context).colorScheme.secondary,
+                  size: 20,
+                ),
               ),
-              const SizedBox(width: 8),
-              const Text(
-                'Preferences',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Preferences',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
+          Text(
+            'Customize your experience with personalized settings and preferences.',
+            style: TextStyle(
+              fontSize: 14,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 20),
           _buildDefaultProviderDropdown(),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           _buildEmbeddingProviderDropdown(),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           _buildEducationLevelDropdown(),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           _buildSpeakerModeSwitch(),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           _buildNoiseCancellationWarningReset(),
         ],
       ),
-    ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.2, end: 0);
+    ).animate().fadeIn(duration: 400.ms, delay: 100.ms).slideY(begin: 0.2, end: 0);
   }
 
   Widget _buildDefaultProviderDropdown() {
@@ -476,6 +543,99 @@ class _SettingsScreenState extends State<SettingsScreen> {
             }
           },
           child: const Text('Reset'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAboutSection() {
+    return GlassContainer(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.tertiary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.info_outline,
+                  color: Theme.of(context).colorScheme.tertiary,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'About',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildAboutItem('Version', '1.0.0'),
+          const SizedBox(height: 12),
+          _buildAboutItem('Build', 'Release'),
+          const SizedBox(height: 12),
+          _buildAboutItem('Platform', 'Flutter'),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.1),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'AI Classroom Assistant',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Transform your learning experience with AI-powered transcription, analysis, and note generation. Built with care for students and educators.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 500.ms, delay: 200.ms).slideY(begin: 0.2, end: 0);
+  }
+
+  Widget _buildAboutItem(String label, String value) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+            ),
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            fontWeight: FontWeight.w500,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
         ),
       ],
     );

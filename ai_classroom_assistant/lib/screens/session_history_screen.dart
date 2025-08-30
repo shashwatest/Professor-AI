@@ -76,8 +76,8 @@ class _SessionHistoryScreenState extends State<SessionHistoryScreen> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Theme.of(context).colorScheme.primary.withOpacity(0.1),
-              Theme.of(context).colorScheme.secondary.withOpacity(0.1),
+              Theme.of(context).colorScheme.primary.withOpacity(0.05),
+              Theme.of(context).colorScheme.secondary.withOpacity(0.05),
             ],
           ),
         ),
@@ -98,25 +98,44 @@ class _SessionHistoryScreenState extends State<SessionHistoryScreen> {
       margin: const EdgeInsets.all(16),
       child: Row(
         children: [
-          IconButton(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              Icons.history,
+              color: Theme.of(context).colorScheme.primary,
+              size: 20,
+            ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 12),
           const Expanded(
             child: Text(
               'Session History',
               style: TextStyle(
                 fontSize: 20,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
-          Text(
-            '${_sessions.length} sessions',
-            style: TextStyle(
-              fontSize: 12,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.2),
+              ),
+            ),
+            child: Text(
+              '${_sessions.length} sessions',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: Theme.of(context).colorScheme.onPrimaryContainer,
+              ),
             ),
           ),
         ],
@@ -126,8 +145,25 @@ class _SessionHistoryScreenState extends State<SessionHistoryScreen> {
 
   Widget _buildSessionsList() {
     if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
+      return Center(
+        child: Container(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Loading sessions...',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                ),
+              ),
+            ],
+          ),
+        ),
       );
     }
 
@@ -138,27 +174,38 @@ class _SessionHistoryScreenState extends State<SessionHistoryScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                Icons.history,
-                size: 64,
-                color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Icon(
+                  Icons.history,
+                  size: 48,
+                  color: Theme.of(context).colorScheme.primary.withOpacity(0.7),
+                ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
               Text(
                 'No sessions yet',
-                style: TextStyle(
-                  fontSize: 18,
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Start recording to create your first session',
+              Text(
+                'Start recording to create your first session and build your learning history',
                 textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                  height: 1.4,
+                ),
               ),
             ],
           ),
-        ),
+        ).animate().fadeIn(duration: 600.ms).scale(begin: const Offset(0.8, 0.8)),
       );
     }
 
@@ -180,90 +227,8 @@ class _SessionHistoryScreenState extends State<SessionHistoryScreen> {
         : Duration.zero;
 
     return GlassContainer(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        leading: Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                Theme.of(context).colorScheme.primary.withOpacity(0.8),
-                Theme.of(context).colorScheme.secondary.withOpacity(0.8),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Icon(
-            Icons.school,
-            color: Colors.white,
-          ),
-        ),
-        title: Text(
-          'Class Session',
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('$date at $time'),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Text('${session.wordCount} words'),
-                const SizedBox(width: 16),
-                if (duration.inMinutes > 0)
-                  Text('${duration.inMinutes}m ${duration.inSeconds % 60}s'),
-                const SizedBox(width: 16),
-                if (session.extractedTopics.isNotEmpty)
-                  Text('${session.extractedTopics.length} topics'),
-              ],
-            ),
-          ],
-        ),
-        trailing: PopupMenuButton(
-          itemBuilder: (context) => [
-            PopupMenuItem(
-              value: 'view',
-              child: const Row(
-                children: [
-                  Icon(Icons.visibility),
-                  SizedBox(width: 8),
-                  Text('View Notes'),
-                ],
-              ),
-            ),
-            PopupMenuItem(
-              value: 'delete',
-              child: Row(
-                children: [
-                  Icon(Icons.delete, color: Theme.of(context).colorScheme.error),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Delete',
-                    style: TextStyle(color: Theme.of(context).colorScheme.error),
-                  ),
-                ],
-              ),
-            ),
-          ],
-          onSelected: (value) {
-            if (value == 'view') {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => NotesScreen(
-                    session: session,
-                    aiService: widget.aiService,
-                    educationLevel: widget.educationLevel,
-                  ),
-                ),
-              );
-            } else if (value == 'delete') {
-              _showDeleteConfirmation(session);
-            }
-          },
-        ),
+      margin: const EdgeInsets.only(bottom: 16),
+      child: InkWell(
         onTap: () {
           Navigator.push(
             context,
@@ -276,10 +241,224 @@ class _SessionHistoryScreenState extends State<SessionHistoryScreen> {
             ),
           );
         },
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Theme.of(context).colorScheme.primary.withOpacity(0.8),
+                          Theme.of(context).colorScheme.secondary.withOpacity(0.8),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.school,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Learning Session',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '$date at $time',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  PopupMenuButton(
+                    icon: Icon(
+                      Icons.more_vert,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                    ),
+                    itemBuilder: (context) => [
+                      PopupMenuItem(
+                        value: 'view',
+                        child: const Row(
+                          children: [
+                            Icon(Icons.visibility),
+                            SizedBox(width: 8),
+                            Text('View Notes'),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete, color: Theme.of(context).colorScheme.error),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Delete',
+                              style: TextStyle(color: Theme.of(context).colorScheme.error),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    onSelected: (value) {
+                      if (value == 'view') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => NotesScreen(
+                              session: session,
+                              aiService: widget.aiService,
+                              educationLevel: widget.educationLevel,
+                            ),
+                          ),
+                        );
+                      } else if (value == 'delete') {
+                        _showDeleteConfirmation(session);
+                      }
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  _buildStatChip(
+                    icon: Icons.text_fields,
+                    label: '${session.wordCount} words',
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(width: 12),
+                  if (duration.inMinutes > 0)
+                    _buildStatChip(
+                      icon: Icons.access_time,
+                      label: '${duration.inMinutes}m ${duration.inSeconds % 60}s',
+                      color: Theme.of(context).colorScheme.secondary,
+                    ),
+                  const SizedBox(width: 12),
+                  if (session.extractedTopics.isNotEmpty)
+                    _buildStatChip(
+                      icon: Icons.topic,
+                      label: '${session.extractedTopics.length} topics',
+                      color: Theme.of(context).colorScheme.tertiary,
+                    ),
+                ],
+              ),
+              if (session.extractedTopics.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Text(
+                  'Topics Covered:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: session.extractedTopics.take(3).map((topic) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface.withOpacity(0.5),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.2),
+                        ),
+                      ),
+                      child: Text(
+                        topic.length > 30 ? '${topic.substring(0, 30)}...' : topic,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                if (session.extractedTopics.length > 3)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      '+${session.extractedTopics.length - 3} more topics',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+              ],
+            ],
+          ),
+        ),
       ),
     ).animate(delay: Duration(milliseconds: index * 100))
-        .fadeIn(duration: 300.ms)
-        .slideX(begin: 0.2, end: 0);
+        .fadeIn(duration: 400.ms)
+        .slideY(begin: 0.3, end: 0);
+  }
+
+  Widget _buildStatChip({
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: color.withOpacity(0.3),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 12,
+            color: color,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              color: color,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showDeleteConfirmation(TranscriptionSession session) {
