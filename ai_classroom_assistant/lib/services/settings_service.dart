@@ -1,6 +1,7 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'ai_service.dart';
+import 'embeddings/embeddings_factory.dart';
 
 class SettingsService {
   static const _storage = FlutterSecureStorage();
@@ -53,5 +54,33 @@ class SettingsService {
   static Future<bool> getSingleSpeakerMode() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool('single_speaker_mode') ?? true;
+  }
+  
+  // Embedding Provider
+  static Future<void> setEmbeddingProvider(EmbeddingProvider provider) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('embedding_provider', provider.name);
+  }
+  
+  static Future<EmbeddingProvider> getEmbeddingProvider() async {
+    final prefs = await SharedPreferences.getInstance();
+    final providerName = prefs.getString('embedding_provider') ?? 'google';
+    return EmbeddingProvider.values.firstWhere(
+      (p) => p.name == providerName,
+      orElse: () => EmbeddingProvider.google,
+    );
+  }
+  
+  // Google Project ID (for Google embeddings)
+  static Future<void> setGoogleProjectId(String projectId) async {
+    await _storage.write(key: 'google_project_id', value: projectId);
+  }
+  
+  static Future<String?> getGoogleProjectId() async {
+    return await _storage.read(key: 'google_project_id');
+  }
+  
+  static Future<void> deleteGoogleProjectId() async {
+    await _storage.delete(key: 'google_project_id');
   }
 }

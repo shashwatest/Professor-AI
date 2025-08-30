@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../models/content_type.dart';
 
 enum AIProvider { gemini, openai, meta }
 
@@ -18,8 +19,15 @@ class OpenAIService implements AIService {
   @override
   Future<List<String>> extractTopics(String transcription, String educationLevel) async {
     final prompt = '''
-Extract 3-5 key topics from this classroom transcription for a $educationLevel student.
-Return only topic names, one per line, no numbering or bullets.
+Analyze this classroom transcription for a $educationLevel student and extract:
+1. Key academic topics (3-5 items)
+2. Questions asked by students or instructor (if any)
+
+IMPORTANT: Return ONLY the extracted items, one per line, with these exact prefixes:
+- TOPIC: [topic name]
+- QUESTION: [question text]
+
+Do not include any explanatory text, analysis, or additional commentary. Return only the prefixed items.
 
 Transcription: $transcription
 ''';
@@ -30,7 +38,7 @@ Transcription: $transcription
         'messages': [
           {'role': 'user', 'content': prompt}
         ],
-        'max_tokens': 200,
+        'max_tokens': 300,
         'temperature': 0.3,
       });
 
@@ -94,6 +102,8 @@ Detail any real-world examples, case studies, or practice problems discussed. If
 
 ---
 
+---
+
 ## Potential Exam Questions
 Based on the lecture content, generate 2-3 potential exam questions (e.g., short answer, multiple-choice) to help the student test their understanding.
 
@@ -123,7 +133,49 @@ $transcription
 
   @override
   Future<String> getTopicDetails(String topic, String educationLevel) async {
-    final prompt = '''
+    // Detect content type to provide appropriate response
+    final contentType = ContentTypeDetector.detectFromContent(topic);
+    
+    String prompt;
+    
+    switch (contentType) {
+      case ContentType.question:
+        prompt = '''
+You are an expert educator answering a student question. The question is: "$topic"
+
+Provide a comprehensive answer for a $educationLevel student in this format:
+
+## Question Analysis
+Briefly restate what the question is asking.
+
+## Direct Answer
+Provide a clear, direct answer to the question.
+
+## Detailed Explanation
+Explain the reasoning and concepts behind the answer.
+
+## Key Concepts
+List the main concepts involved:
+* **Concept 1:** [Brief explanation]
+* **Concept 2:** [Brief explanation]
+
+## Related Formulas (If applicable)
+List relevant formulas with explanations:
+* \$\$[Formula]\$\$
+  * **Explanation:** [What it calculates and when to use it]
+
+## Example
+Provide a concrete example that illustrates the answer.
+
+## Study Tips
+* **Tip:** [How to remember or apply this concept]
+''';
+        break;
+        
+
+        
+      default: // ContentType.topic
+        prompt = '''
 You are an expert educator. Your mission is to create a comprehensive and easy-to-understand guide on the topic of "$topic" for a "$educationLevel" student.
 
 Strictly adhere to the following format and guidelines. Replace bracketed placeholders with relevant information. If a section is not applicable (e.g., formulas for a history topic), omit it.
@@ -145,7 +197,7 @@ Use a bulleted list to explain the most critical concepts.
 
 ##Key Formulas / Syntax (If applicable)
 List essential formulas or code syntax using LaTeX for math. Explain each component.
-*  \$\$[Formula\ 1]\$\$
+*  \$\$[Formula 1]\$\$
     * **Explanation:** [Describe what it calculates and define its variables.]
 
 ##Worked Example
@@ -161,6 +213,8 @@ Point out and clarify 1-2 common misunderstandings about this topic.
 * **Study Tip:** [Provide a useful study technique.]
 * **Mnemonic:** [Provide a simple mnemonic, if one exists.]
 ''';
+        break;
+    }
 
     try {
       final response = await _makeRequest('chat/completions', {
@@ -205,8 +259,15 @@ class GeminiService implements AIService {
   @override
   Future<List<String>> extractTopics(String transcription, String educationLevel) async {
     final prompt = '''
-Extract 3-5 key topics from this classroom transcription for a $educationLevel student.
-Return only topic names, one per line, no numbering or bullets.
+Analyze this classroom transcription for a $educationLevel student and extract:
+1. Key academic topics, however many are there, if there aren't any dont' return any topics.
+2. Questions asked by students or instructor (if any)
+
+IMPORTANT: Return ONLY the extracted items, one per line, with these exact prefixes:
+- TOPIC: [topic name]
+- QUESTION: [question text]
+
+Do not include any explanatory text, analysis, or additional commentary. Return only the prefixed items.
 
 Transcription: $transcription
 ''';
@@ -217,7 +278,7 @@ Transcription: $transcription
           'parts': [{'text': prompt}]
         }],
         'generationConfig': {
-          'maxOutputTokens': 200,
+          'maxOutputTokens': 300,
           'temperature': 0.3,
         }
       });
@@ -287,7 +348,44 @@ Transcription: $transcription
 
   @override
   Future<String> getTopicDetails(String topic, String educationLevel) async {
-    final prompt = '''
+    // Detect content type to provide appropriate response
+    final contentType = ContentTypeDetector.detectFromContent(topic);
+    
+    String prompt;
+    
+    switch (contentType) {
+      case ContentType.question:
+        prompt = '''
+Answer this student question: "$topic" for a $educationLevel student.
+
+**Question Analysis:**
+[What the question is asking]
+
+**Direct Answer:**
+[Clear, direct answer]
+
+**Detailed Explanation:**
+[Reasoning and concepts behind the answer]
+
+**Key Concepts:**
+• [Concept 1]
+• [Concept 2]
+
+**Related Formulas (if applicable):**
+[Relevant formulas with explanations]
+
+**Example:**
+[Concrete example illustrating the answer]
+
+**Study Tips:**
+[How to remember or apply this concept]
+''';
+        break;
+        
+
+        
+      default: // ContentType.topic
+        prompt = '''
 Provide detailed information about "$topic" for a $educationLevel student in this structured format:
 
 **Definition:**
@@ -309,6 +407,8 @@ Provide detailed information about "$topic" for a $educationLevel student in thi
 
 Keep each section concise but informative.
 ''';
+        break;
+    }
 
     try {
       final response = await _makeRequest('models/gemini-2.0-flash:generateContent', {
@@ -353,8 +453,15 @@ class MetaService implements AIService {
   @override
   Future<List<String>> extractTopics(String transcription, String educationLevel) async {
     final prompt = '''
-Extract 3-5 key topics from this classroom transcription for a $educationLevel student.
-Return only topic names, one per line, no numbering or bullets.
+Analyze this classroom transcription for a $educationLevel student and extract:
+1. Key academic topics (3-5 items)
+2. Questions asked by students or instructor (if any)
+
+IMPORTANT: Return ONLY the extracted items, one per line, with these exact prefixes:
+- TOPIC: [topic name]
+- QUESTION: [question text]
+
+Do not include any explanatory text, analysis, or additional commentary. Return only the prefixed items.
 
 Transcription: $transcription
 ''';
@@ -365,7 +472,7 @@ Transcription: $transcription
         'messages': [
           {'role': 'user', 'content': prompt}
         ],
-        'max_tokens': 200,
+        'max_tokens': 300,
         'temperature': 0.3,
       });
 
@@ -381,6 +488,22 @@ Transcription: $transcription
     final prompt = '''
 Create structured study notes from this classroom transcription for a $educationLevel student.
 Include key concepts, important formulas, and main points in a clear format.
+
+**Format your response as:**
+
+# [Subject/Topic Title]
+
+## Key Concepts
+[Main concepts and definitions]
+
+## Important Formulas
+[Relevant formulas with explanations]
+
+## Examples & Applications
+[Real-world examples]
+
+## Summary
+[Overview of main points]
 
 Transcription: $transcription
 ''';
@@ -403,7 +526,38 @@ Transcription: $transcription
 
   @override
   Future<String> getTopicDetails(String topic, String educationLevel) async {
-    final prompt = '''
+    // Detect content type to provide appropriate response
+    final contentType = ContentTypeDetector.detectFromContent(topic);
+    
+    String prompt;
+    
+    switch (contentType) {
+      case ContentType.question:
+        prompt = '''
+Answer this student question: "$topic" for a $educationLevel student.
+
+**Question Analysis:**
+[What the question is asking]
+
+**Direct Answer:**
+[Clear, direct answer]
+
+**Key Concepts:**
+• [Concept 1]
+• [Concept 2]
+
+**Example:**
+[Concrete example]
+
+**Study Tips:**
+[How to remember this]
+''';
+        break;
+        
+
+        
+      default: // ContentType.topic
+        prompt = '''
 Provide detailed information about "$topic" for a $educationLevel student in this structured format:
 
 **Definition:**
@@ -425,6 +579,8 @@ Provide detailed information about "$topic" for a $educationLevel student in thi
 
 Keep each section concise but informative.
 ''';
+        break;
+    }
 
     try {
       final response = await _makeRequest('chat/completions', {

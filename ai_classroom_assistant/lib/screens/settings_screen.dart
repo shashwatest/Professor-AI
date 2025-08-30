@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../services/ai_service.dart';
 import '../services/settings_service.dart';
+import '../services/embeddings/embeddings_factory.dart';
+import '../services/embeddings/embeddings_service.dart';
 import '../widgets/glass_container.dart';
+import '../widgets/noise_cancellation_warning_dialog.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -13,7 +16,9 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final Map<AIProvider, TextEditingController> _apiKeyControllers = {};
+
   AIProvider _defaultProvider = AIProvider.gemini;
+  EmbeddingProvider _embeddingProvider = EmbeddingProvider.google;
   String _educationLevel = 'Undergraduate';
   bool _singleSpeakerMode = true;
   bool _isLoading = true;
@@ -30,6 +35,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _loadSettings() async {
     try {
       _defaultProvider = await SettingsService.getDefaultProvider();
+      _embeddingProvider = await SettingsService.getEmbeddingProvider();
       _educationLevel = await SettingsService.getEducationLevel();
       _singleSpeakerMode = await SettingsService.getSingleSpeakerMode();
       
@@ -39,6 +45,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _apiKeyControllers[provider]!.text = key;
         }
       }
+      
+      // Google Project ID no longer needed for Generative AI embeddings
       
       setState(() {
         _isLoading = false;
@@ -53,6 +61,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _saveSettings() async {
     try {
       await SettingsService.setDefaultProvider(_defaultProvider);
+      await SettingsService.setEmbeddingProvider(_embeddingProvider);
       await SettingsService.setEducationLevel(_educationLevel);
       await SettingsService.setSingleSpeakerMode(_singleSpeakerMode);
       
@@ -64,6 +73,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           await SettingsService.deleteAPIKey(provider);
         }
       }
+      
+      // Google Project ID no longer needed for Generative AI embeddings
+      
+      // Clear embeddings cache and refresh DocumentService provider when settings change
+      EmbeddingsService.clearCache();
+      await EmbeddingsService.refreshDocumentServiceProvider();
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -266,9 +281,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 16),
           _buildDefaultProviderDropdown(),
           const SizedBox(height: 16),
+          _buildEmbeddingProviderDropdown(),
+          const SizedBox(height: 16),
           _buildEducationLevelDropdown(),
           const SizedBox(height: 16),
           _buildSpeakerModeSwitch(),
+          const SizedBox(height: 16),
+          _buildNoiseCancellationWarningReset(),
         ],
       ),
     ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.2, end: 0);
@@ -306,6 +325,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ],
     );
   }
+
+  Widget _buildEmbeddingProviderDropdown() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Embedding Provider',
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Provider for document embeddings and similarity search. Google uses the same API key as Gemini.',
+          style: TextStyle(
+            fontSize: 12,
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+          ),
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<EmbeddingProvider>(
+          value: _embeddingProvider,
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+          ),
+          items: EmbeddingProvider.values
+              .map((provider) => DropdownMenuItem(
+                    value: provider,
+                    child: Text(provider.name.toUpperCase()),
+                  ))
+              .toList(),
+          onChanged: (value) {
+            setState(() {
+              _embeddingProvider = value!;
+            });
+          },
+        ),
+      ],
+    );
+  }
+
+
 
   Widget _buildEducationLevelDropdown() {
     return Column(
@@ -377,11 +439,54 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Widget _buildNoiseCancellationWarningReset() {
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Audio Setup Warning',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Reset noise cancellation warning dialog',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                ),
+              ),
+            ],
+          ),
+        ),
+        TextButton(
+          onPressed: () async {
+            await NoiseCancellationWarningDialog.resetWarningPreference();
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Warning will show again on next transcription'),
+                ),
+              );
+            }
+          },
+          child: const Text('Reset'),
+        ),
+      ],
+    );
+  }
+
   @override
   void dispose() {
     for (final controller in _apiKeyControllers.values) {
       controller.dispose();
     }
+
     super.dispose();
   }
 }

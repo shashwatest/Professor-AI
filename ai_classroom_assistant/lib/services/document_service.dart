@@ -9,6 +9,7 @@ import 'package:syncfusion_flutter_pdf/pdf.dart';
 import 'package:crypto/crypto.dart'; // for chunk dedup hashing
 
 import 'embeddings/embeddings_provider.dart';
+import 'embeddings/embeddings_service.dart';
 import 'vectorstore/vector_store.dart';
 import 'utils/backoff.dart';
 
@@ -139,7 +140,9 @@ class DocumentService {
       }
 
       // Index into vector store (RAG) - best-effort with retries
-      final embProvider = embeddingsProviderOverride ?? embeddingsProvider;
+      final embProvider = embeddingsProviderOverride ?? 
+                         embeddingsProvider ?? 
+                         await EmbeddingsService.getEmbeddingsProvider();
       final vstore = vectorStoreOverride ?? vectorStore;
 
       if (embProvider == null || vstore == null) {
@@ -205,9 +208,10 @@ class DocumentService {
   /// or falls back to keyword similarity if vectorStore / embeddings not configured.
   static Future<List<DocumentChunk>> retrieveRelevantChunks(String query, {int topK = 5}) async {
     try {
-      if (vectorStore != null && embeddingsProvider != null) {
+      final embProvider = embeddingsProvider ?? await EmbeddingsService.getEmbeddingsProvider();
+      if (vectorStore != null && embProvider != null) {
         // embed query and call vector search
-        final qvec = await embeddingsProvider!.embedText(query);
+        final qvec = await embProvider.embedText(query);
         final results = await vectorStore!.queryByVector(qvec, topK: topK);
 
         // Map results to DocumentChunk using stored metadata (if available)
@@ -377,6 +381,18 @@ class DocumentService {
   static void clearDocument() {
     _documentChunks.clear();
     _currentDocumentName = null;
+  }
+
+  /// Debug method to check RAG system status
+  static Map<String, dynamic> getRAGStatus() {
+    return {
+      'hasEmbeddingsProvider': embeddingsProvider != null,
+      'hasVectorStore': vectorStore != null,
+      'embeddingsProviderType': embeddingsProvider?.runtimeType.toString(),
+      'vectorStoreType': vectorStore?.runtimeType.toString(),
+      'documentChunksCount': _documentChunks.length,
+      'currentDocument': _currentDocumentName,
+    };
   }
 }
 

@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
-import 'package:markdown/markdown.dart' as md;
 
 import '../services/ai_service.dart';
 import '../services/document_service.dart';
@@ -62,18 +61,25 @@ class _TopicDetailScreenState extends State<TopicDetailScreen> with TickerProvid
 
 
   Future<void> _loadDocumentContent() async {
-  try {
-    final chunks = await DocumentService.retrieveRelevantChunks(widget.topic, topK: 5);
-    setState(() {
-      _documentChunks = chunks;
-    });
-  } catch (e) {
-    setState(() {
-      _documentChunks = [];
-    });
-    debugPrint('Error loading document content: $e');
+    try {
+      // Debug: Check if RAG services are available
+      final hasEmbeddings = DocumentService.embeddingsProvider != null;
+      final hasVectorStore = DocumentService.vectorStore != null;
+      debugPrint('RAG Status - Embeddings: $hasEmbeddings, VectorStore: $hasVectorStore');
+      
+      final chunks = await DocumentService.retrieveRelevantChunks(widget.topic, topK: 5);
+      setState(() {
+        _documentChunks = chunks;
+      });
+      
+      debugPrint('Retrieved ${chunks.length} relevant chunks for topic: ${widget.topic}');
+    } catch (e) {
+      setState(() {
+        _documentChunks = [];
+      });
+      debugPrint('Error loading document content: $e');
+    }
   }
-}
 
   // void _loadDocumentContent() {
   //   _documentChunks = DocumentService.findRelevantChunks(widget.topic);
@@ -200,7 +206,9 @@ class _TopicDetailScreenState extends State<TopicDetailScreen> with TickerProvid
             ),
             Tab(
               icon: const Icon(Icons.description),
-              text: DocumentService.hasDocument ? 'Document' : 'No Document',
+              text: DocumentService.hasDocument 
+                ? (DocumentService.embeddingsProvider != null ? 'Document (RAG)' : 'Document (Basic)')
+                : 'No Document',
             ),
           ],
         ),
@@ -388,6 +396,25 @@ class _TopicDetailScreenState extends State<TopicDetailScreen> with TickerProvid
                     'From Document: ${DocumentService.currentDocumentName}',
                     style: const TextStyle(
                       fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: DocumentService.embeddingsProvider != null 
+                      ? Colors.green.withOpacity(0.2)
+                      : Colors.orange.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    DocumentService.embeddingsProvider != null ? 'RAG' : 'Basic',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: DocumentService.embeddingsProvider != null 
+                        ? Colors.green.shade700
+                        : Colors.orange.shade700,
                       fontWeight: FontWeight.bold,
                     ),
                   ),

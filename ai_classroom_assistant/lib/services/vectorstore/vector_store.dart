@@ -1,5 +1,5 @@
 // lib/services/vectorstore/vector_store.dart
-/// Vector store interface and in-memory implementation (cosine search)
+// Vector store interface and in-memory implementation (cosine search)
 import 'dart:math';
 
 class VectorItem {

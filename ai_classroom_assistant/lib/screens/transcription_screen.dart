@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../models/transcription_session.dart';
+import '../models/extracted_content_item.dart';
 import '../services/speech_service.dart';
 import '../services/ai_service.dart';
+import '../services/transcription_trigger.dart';
 import '../widgets/glass_container.dart';
+import '../widgets/noise_cancellation_warning_dialog.dart';
 import 'topic_detail_screen.dart';
 import 'notes_screen.dart';
 import 'session_history_screen.dart';
@@ -12,6 +15,7 @@ import '../services/session_storage_service.dart';
 import '../services/error_handler_service.dart';
 import '../services/settings_service.dart';
 import '../services/document_service.dart';
+import '../services/embeddings/embeddings_service.dart';
 import 'document_upload_screen.dart';
 
 class TranscriptionScreen extends StatefulWidget {
@@ -23,6 +27,7 @@ class TranscriptionScreen extends StatefulWidget {
 
 class _TranscriptionScreenState extends State<TranscriptionScreen> {
   final SpeechService _speechService = SpeechService();
+  final TranscriptionTrigger _transcriptionTrigger = TranscriptionTrigger();
   TranscriptionSession? _currentSession;
   AIService? _aiService;
 
@@ -31,7 +36,7 @@ class _TranscriptionScreenState extends State<TranscriptionScreen> {
   String _educationLevel = 'Undergraduate';
   String _apiKey = '';
   AIProvider _selectedProvider = AIProvider.gemini;
-  List<String> _extractedTopics = [];
+  List<ExtractedContentItem> _extractedContent = [];
   bool _isExtracting = false;
 
   // live transcript (combined committed + partial) emitted by SpeechService
@@ -54,6 +59,9 @@ class _TranscriptionScreenState extends State<TranscriptionScreen> {
       if (apiKey != null) {
         _apiKey = apiKey;
       }
+
+      // Refresh embeddings provider when settings change
+      await EmbeddingsService.refreshDocumentServiceProvider();
 
       setState(() {});
     } catch (e) {
@@ -86,11 +94,11 @@ class _TranscriptionScreenState extends State<TranscriptionScreen> {
       }
     });
 
-    // Auto-extract topics if word count threshold reached
+    // Auto-extract topics using trigger logic
     if (_currentSession != null &&
-        _currentSession!.wordCount >= 20 &&
         _aiService != null &&
-        !_isExtracting) {
+        !_isExtracting &&
+        _transcriptionTrigger.shouldTrigger(_currentSession!.wordCount)) {
       _extractTopics();
     }
   }
@@ -102,6 +110,9 @@ class _TranscriptionScreenState extends State<TranscriptionScreen> {
   }
 
   Future<void> _startRecording() async {
+    // Show noise cancellation warning if needed
+    await NoiseCancellationWarningDialog.showIfNeeded(context);
+    
     // Check API key for selected provider
     final apiKey = await SettingsService.getAPIKey(_selectedProvider);
     if (apiKey == null || apiKey.isEmpty) {
@@ -121,8 +132,9 @@ class _TranscriptionScreenState extends State<TranscriptionScreen> {
         startTime: DateTime.now(),
         isRecording: true,
       );
-      _extractedTopics.clear();
+      _extractedContent.clear();
       _liveTranscript = '';
+      _transcriptionTrigger.reset(); // Reset trigger for new session
     });
 
     // Start listening. resetSessionText ensures internal transcript starts fresh.
@@ -169,9 +181,9 @@ class _TranscriptionScreenState extends State<TranscriptionScreen> {
       );
 
       setState(() {
-        _extractedTopics = topics;
-        for (final topic in topics) {
-          _currentSession!.addTopic(topic);
+        _extractedContent = ExtractedContentProcessor.processAIResponse(topics);
+        for (final item in _extractedContent) {
+          _currentSession!.addTopic(item.content);
         }
       });
     } catch (e) {
@@ -191,14 +203,14 @@ class _TranscriptionScreenState extends State<TranscriptionScreen> {
     }
   }
 
-  void _showTopicDetails(String topic) {
+  void _showContentDetails(ExtractedContentItem item) {
     if (_aiService == null) return;
 
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => TopicDetailScreen(
-          topic: topic,
+          topic: item.content,
           aiService: _aiService!,
           educationLevel: _educationLevel,
           onAddToNotes: (content) {
@@ -284,7 +296,7 @@ class _TranscriptionScreenState extends State<TranscriptionScreen> {
                 _buildControls(),
                 const SizedBox(height: 20),
                 Expanded(child: _buildTranscriptionView()),
-                if (_extractedTopics.isNotEmpty) _buildTopicsView(),
+                if (_extractedContent.isNotEmpty) _buildContentView(),
                 if (_currentSession != null && _currentSession!.wordCount > 0) _buildNotesButton(),
               ],
             ),
@@ -564,40 +576,36 @@ class _TranscriptionScreenState extends State<TranscriptionScreen> {
     );
   }
 
-  Widget _buildTopicsView() {
+  Widget _buildContentView() {
     return GlassContainer(
       margin: const EdgeInsets.only(top: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Extracted Topics',
+            'Extracted Content',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: _extractedTopics
-                .map((topic) => GestureDetector(
-                      onTap: () => _showTopicDetails(topic),
+            children: _extractedContent
+                .map((item) => GestureDetector(
+                      onTap: () => _showContentDetails(item),
                       child: Container(
                         margin: const EdgeInsets.only(right: 8, bottom: 8),
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                         decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Theme.of(context).colorScheme.primaryContainer.withOpacity(0.8),
-                              Theme.of(context).colorScheme.secondaryContainer.withOpacity(0.8),
-                            ],
-                          ),
+                          color: item.getBackgroundColor(context),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                            color: Colors.white.withOpacity(0.3),
+                            color: item.getThemeColor(context).withOpacity(0.5),
+                            width: 1.5,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
+                              color: item.getThemeColor(context).withOpacity(0.2),
                               blurRadius: 6,
                               offset: const Offset(0, 2),
                             ),
@@ -607,16 +615,20 @@ class _TranscriptionScreenState extends State<TranscriptionScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
-                              Icons.lightbulb_outline,
+                              item.icon,
                               size: 16,
-                              color: Theme.of(context).colorScheme.primary,
+                              color: item.getThemeColor(context),
                             ),
                             const SizedBox(width: 6),
-                            Text(
-                              topic,
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.onPrimaryContainer,
-                                fontWeight: FontWeight.w600,
+                            Flexible(
+                              child: Text(
+                                item.displayText,
+                                style: TextStyle(
+                                  color: item.getThemeColor(context),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 2,
                               ),
                             ),
                           ],

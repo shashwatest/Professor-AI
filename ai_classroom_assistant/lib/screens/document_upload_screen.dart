@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../services/document_service.dart';
+import '../services/embeddings/embeddings_service.dart';
 import '../widgets/glass_container.dart';
 
 class DocumentUploadScreen extends StatefulWidget {
@@ -19,11 +20,14 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
     });
 
     try {
+      // Ensure embeddings provider is up to date before processing
+      await _refreshEmbeddingsProvider();
+      
       final success = await DocumentService.uploadDocumentAndIndex();
       if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Document "${DocumentService.currentDocumentName}" uploaded successfully'),
+            content: Text('Document "${DocumentService.currentDocumentName}" uploaded and indexed successfully'),
           ),
         );
         Navigator.pop(context, true);
@@ -40,6 +44,60 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
           _isUploading = false;
         });
       }
+    }
+  }
+
+  Future<void> _refreshEmbeddingsProvider() async {
+    try {
+      await EmbeddingsService.refreshDocumentServiceProvider();
+    } catch (e) {
+      // Continue without embeddings - will fall back to keyword search
+      debugPrint('Failed to refresh embeddings provider: $e');
+    }
+  }
+
+  Future<void> _testRAG() async {
+    if (!DocumentService.hasDocument) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No document uploaded to test')),
+      );
+      return;
+    }
+
+    try {
+      // Test with a simple query
+      final chunks = await DocumentService.retrieveRelevantChunks('test', topK: 3);
+      final status = DocumentService.getRAGStatus();
+      
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('RAG System Test'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Embeddings Provider: ${status['hasEmbeddingsProvider'] ? '✅' : '❌'}'),
+              Text('Vector Store: ${status['hasVectorStore'] ? '✅' : '❌'}'),
+              Text('Document Chunks: ${status['documentChunksCount']}'),
+              Text('Retrieved Chunks: ${chunks.length}'),
+              const SizedBox(height: 8),
+              Text('Provider Type: ${status['embeddingsProviderType'] ?? 'None'}'),
+              Text('Store Type: ${status['vectorStoreType'] ?? 'None'}'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('RAG test failed: $e')),
+      );
     }
   }
 
@@ -162,15 +220,53 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
               color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
             ),
           ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: DocumentService.embeddingsProvider != null 
+                    ? Colors.green.withOpacity(0.2)
+                    : Colors.orange.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  DocumentService.embeddingsProvider != null ? 'RAG Enabled' : 'Basic Search',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: DocumentService.embeddingsProvider != null 
+                      ? Colors.green.shade700
+                      : Colors.orange.shade700,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 12),
-          ElevatedButton.icon(
-            onPressed: _clearDocument,
-            icon: const Icon(Icons.clear),
-            label: const Text('Clear Document'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-              foregroundColor: Colors.white,
-            ),
+          Row(
+            children: [
+              ElevatedButton.icon(
+                onPressed: _clearDocument,
+                icon: const Icon(Icons.clear),
+                label: const Text('Clear Document'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                onPressed: _testRAG,
+                icon: const Icon(Icons.search),
+                label: const Text('Test RAG'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.secondary,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
           ),
         ],
       ),
