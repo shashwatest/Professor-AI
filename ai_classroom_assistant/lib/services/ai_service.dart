@@ -26,6 +26,9 @@ Analyze this classroom transcription for a $educationLevel student and extract:
 IMPORTANT: Return ONLY the extracted items, one per line, with these exact prefixes:
 - TOPIC: [topic name]
 - QUESTION: [question text]
+- CODE_QUESTION: [programming/coding question text]
+
+Use CODE_QUESTION for any questions related to programming, coding, algorithms, data structures, software development, or any programming language (Java, Python, C++, etc.).
 
 Do not include any explanatory text, analysis, or additional commentary. Return only the prefixed items.
 
@@ -139,36 +142,62 @@ $transcription
     String prompt;
     
     switch (contentType) {
-      case ContentType.question:
+      case ContentType.codingQuestion:
+        // Specialized prompt for coding questions
         prompt = '''
-You are an expert educator answering a student question. The question is: "$topic"
+CODING QUESTION: "$topic"
 
-Provide a comprehensive answer for a $educationLevel student in this format:
+You are a programming instructor. This is a $educationLevel coding question. 
 
-## Question Analysis
-Briefly restate what the question is asking.
+RESPOND ONLY IN THIS EXACT FORMAT - DO NOT DEVIATE:
+
+## Java Code
+```java
+// Complete, runnable Java code solution
+// Include all necessary imports, class structure, main method
+// Add clear comments explaining the logic
+```
+
+## Code Explanation
+[2-3 sentences explaining how the code works and why it solves the problem]
+
+## Search Keywords
+Java programming, [specific concept], [algorithm/data structure], [relevant topic]
+
+STRICT REQUIREMENTS:
+- Start response with "## Java Code"
+- Provide ONLY complete, compilable Java code in code blocks
+- Include proper class structure, imports, main method
+- NO definitions, theory, or formulas
+- Focus ONLY on working code solution
+- If question mentions another language, use that instead of Java
+- Keep explanation brief and code-focused
+''';
+        break;
+
+      case ContentType.question:
+        // Regular question prompt
+        prompt = '''
+You are an expert educator answering: "$topic"
+
+For a $educationLevel student, provide a focused answer:
 
 ## Direct Answer
-Provide a clear, direct answer to the question.
+[Clear, immediate answer in 1-2 sentences]
 
-## Detailed Explanation
-Explain the reasoning and concepts behind the answer.
+## Explanation
+[Concise explanation appropriate for $educationLevel level]
 
-## Key Concepts
-List the main concepts involved:
-* **Concept 1:** [Brief explanation]
-* **Concept 2:** [Brief explanation]
-
-## Related Formulas (If applicable)
-List relevant formulas with explanations:
-* \$\$[Formula]\$\$
-  * **Explanation:** [What it calculates and when to use it]
+## Key Formula
+[If applicable: \$\$formula\$\$ with brief explanation]
 
 ## Example
-Provide a concrete example that illustrates the answer.
+[One concrete example]
 
-## Study Tips
-* **Tip:** [How to remember or apply this concept]
+## Search Keywords
+[3-4 relevant search terms]
+
+Keep it concise and educational. Avoid unnecessary complexity.
 ''';
         break;
         
@@ -266,6 +295,9 @@ Analyze this classroom transcription for a $educationLevel student and extract:
 IMPORTANT: Return ONLY the extracted items, one per line, with these exact prefixes:
 - TOPIC: [topic name]
 - QUESTION: [question text]
+- CODE_QUESTION: [programming/coding question text]
+
+Use CODE_QUESTION for any questions related to programming, coding, algorithms, data structures, software development, or any programming language (Java, Python, C++, etc.).
 
 Do not include any explanatory text, analysis, or additional commentary. Return only the prefixed items.
 
@@ -354,31 +386,60 @@ Transcription: $transcription
     String prompt;
     
     switch (contentType) {
-      case ContentType.question:
+      case ContentType.codingQuestion:
+        // Specialized prompt for coding questions
         prompt = '''
-Answer this student question: "$topic" for a $educationLevel student.
+CODING QUESTION: "$topic"
 
-**Question Analysis:**
-[What the question is asking]
+You are a programming instructor. This is a $educationLevel coding question.
 
-**Direct Answer:**
-[Clear, direct answer]
+RESPOND ONLY IN THIS EXACT FORMAT - DO NOT DEVIATE:
 
-**Detailed Explanation:**
-[Reasoning and concepts behind the answer]
+## Java Code
+```java
+// Complete, runnable Java code solution
+// Include all necessary imports, class structure, main method
+// Add clear comments explaining the logic
+```
 
-**Key Concepts:**
-• [Concept 1]
-• [Concept 2]
+## Code Explanation
+[2-3 sentences explaining how the code works and why it solves the problem]
 
-**Related Formulas (if applicable):**
-[Relevant formulas with explanations]
+## Search Keywords
+Java programming, [specific concept], [algorithm/data structure], [relevant topic]
 
-**Example:**
-[Concrete example illustrating the answer]
+STRICT REQUIREMENTS:
+- Start response with "## Java Code"
+- Provide ONLY complete, compilable Java code in code blocks
+- Include proper class structure, imports, main method
+- NO definitions, theory, or formulas
+- Focus ONLY on working code solution
+- If question mentions another language, use that instead of Java
+- Keep explanation brief and code-focused
+''';
+        break;
 
-**Study Tips:**
-[How to remember or apply this concept]
+      case ContentType.question:
+        // Regular question prompt
+        prompt = '''
+Answer this question: "$topic" for a $educationLevel student.
+
+## Direct Answer
+[Clear, immediate answer in 1-2 sentences]
+
+## Explanation
+[Concise explanation appropriate for $educationLevel level]
+
+## Key Formula
+[If applicable: \$\$formula\$\$ with brief explanation]
+
+## Example
+[One concrete example]
+
+## Search Keywords
+[3-4 relevant search terms]
+
+Keep it focused and educational.
 ''';
         break;
         
@@ -460,6 +521,9 @@ Analyze this classroom transcription for a $educationLevel student and extract:
 IMPORTANT: Return ONLY the extracted items, one per line, with these exact prefixes:
 - TOPIC: [topic name]
 - QUESTION: [question text]
+- CODE_QUESTION: [programming/coding question text]
+
+Use CODE_QUESTION for any questions related to programming, coding, algorithms, data structures, software development, or any programming language (Java, Python, C++, etc.).
 
 Do not include any explanatory text, analysis, or additional commentary. Return only the prefixed items.
 
@@ -532,25 +596,60 @@ Transcription: $transcription
     String prompt;
     
     switch (contentType) {
-      case ContentType.question:
+      case ContentType.codingQuestion:
+        // Specialized prompt for coding questions
         prompt = '''
-Answer this student question: "$topic" for a $educationLevel student.
+CODING QUESTION: "$topic"
 
-**Question Analysis:**
-[What the question is asking]
+You are a programming instructor. This is a $educationLevel coding question.
 
-**Direct Answer:**
-[Clear, direct answer]
+RESPOND ONLY IN THIS EXACT FORMAT - DO NOT DEVIATE:
 
-**Key Concepts:**
-• [Concept 1]
-• [Concept 2]
+## Java Code
+```java
+// Complete, runnable Java code solution
+// Include all necessary imports, class structure, main method
+// Add clear comments explaining the logic
+```
 
-**Example:**
-[Concrete example]
+## Code Explanation
+[2-3 sentences explaining how the code works and why it solves the problem]
 
-**Study Tips:**
-[How to remember this]
+## Search Keywords
+Java programming, [specific concept], [algorithm/data structure], [relevant topic]
+
+STRICT REQUIREMENTS:
+- Start response with "## Java Code"
+- Provide ONLY complete, compilable Java code in code blocks
+- Include proper class structure, imports, main method
+- NO definitions, theory, or formulas
+- Focus ONLY on working code solution
+- If question mentions another language, use that instead of Java
+- Keep explanation brief and code-focused
+''';
+        break;
+
+      case ContentType.question:
+        // Regular question prompt
+        prompt = '''
+Answer: "$topic" for a $educationLevel student.
+
+## Direct Answer
+[Clear answer in 1-2 sentences]
+
+## Explanation
+[Concise explanation for $educationLevel level]
+
+## Key Formula
+[If applicable: \$\$formula\$\$ with explanation]
+
+## Example
+[One concrete example]
+
+## Search Keywords
+[3-4 search terms]
+
+Keep it focused and educational.
 ''';
         break;
         

@@ -133,8 +133,10 @@ class ExtractedContentProcessor {
     // Check if line has proper prefix (with or without dash)
     if (trimmed.startsWith('TOPIC:') || 
         trimmed.startsWith('QUESTION:') ||
+        trimmed.startsWith('CODE_QUESTION:') ||
         trimmed.startsWith('- TOPIC:') || 
-        trimmed.startsWith('- QUESTION:')) {
+        trimmed.startsWith('- QUESTION:') ||
+        trimmed.startsWith('- CODE_QUESTION:')) {
       return true;
     }
     
