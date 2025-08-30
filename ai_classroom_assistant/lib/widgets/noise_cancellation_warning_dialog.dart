@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'glass_container.dart';
 
 class NoiseCancellationWarningDialog extends StatefulWidget {
   const NoiseCancellationWarningDialog({super.key});
@@ -37,69 +38,169 @@ class _NoiseCancellationWarningDialogState extends State<NoiseCancellationWarnin
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     
-    return AlertDialog(
-      icon: Icon(
-        Icons.mic_off_outlined,
-        size: 48,
-        color: theme.colorScheme.primary,
-      ),
-      title: const Text('Audio Setup Recommendation'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'For optimal transcription quality, we recommend disabling noise cancellation on your device.',
-            style: theme.textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'How to disable noise cancellation:',
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.bold,
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: GlassContainer(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.mic_off_outlined,
+                  size: 32,
+                  color: theme.colorScheme.primary,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Audio Setup Recommendation',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: 8),
-          _buildInstructionItem('• iPhone: Settings > Accessibility > Audio/Visual > Phone Noise Cancellation (OFF)'),
-          _buildInstructionItem('• Android: Settings > Sounds > Advanced > Noise Cancellation (OFF)'),
-          _buildInstructionItem('• AirPods: Settings > Bluetooth > AirPods > Noise Cancellation (OFF)'),
-          const SizedBox(height: 16),
-          CheckboxListTile(
-            value: _dontShowAgain,
-            onChanged: (value) {
-              setState(() {
-                _dontShowAgain = value ?? false;
-              });
-            },
-            title: Text(
-              "Don't show this again",
-              style: theme.textTheme.bodySmall,
+            const SizedBox(height: 20),
+            Text(
+              'For optimal transcription quality, we recommend disabling noise cancellation on your device.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: Colors.white.withOpacity(0.9),
+                height: 1.4,
+              ),
             ),
-            contentPadding: EdgeInsets.zero,
-            controlAffinity: ListTileControlAffinity.leading,
-          ),
-        ],
+            const SizedBox(height: 16),
+            Text(
+              'How to disable noise cancellation:',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.2),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildInstructionItem('• iPhone: Settings > Accessibility > Audio/Visual > Phone Noise Cancellation (OFF)'),
+                  _buildInstructionItem('• Android: Settings > Sounds > Advanced > Noise Cancellation (OFF)'),
+                  _buildInstructionItem('• AirPods: Settings > Bluetooth > AirPods > Noise Cancellation (OFF)'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.2),
+                ),
+              ),
+              child: CheckboxListTile(
+                value: _dontShowAgain,
+                onChanged: (value) {
+                  setState(() {
+                    _dontShowAgain = value ?? false;
+                  });
+                },
+                title: Text(
+                  "Don't show this again",
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: Colors.white.withOpacity(0.9),
+                  ),
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                controlAffinity: ListTileControlAffinity.leading,
+                activeColor: theme.colorScheme.primary,
+                checkColor: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.2),
+                    ),
+                  ),
+                  child: TextButton(
+                    onPressed: () => _dismissDialog(false),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    ),
+                    child: const Text(
+                      'Skip',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        theme.colorScheme.primary.withOpacity(0.8),
+                        theme.colorScheme.secondary.withOpacity(0.8),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: theme.colorScheme.primary.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: ElevatedButton(
+                    onPressed: () => _dismissDialog(true),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      shadowColor: Colors.transparent,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    ),
+                    child: const Text(
+                      'Got it',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => _dismissDialog(false),
-          child: const Text('Skip'),
-        ),
-        FilledButton(
-          onPressed: () => _dismissDialog(true),
-          child: const Text('Got it'),
-        ),
-      ],
     );
   }
 
   Widget _buildInstructionItem(String text) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.only(bottom: 8),
       child: Text(
         text,
         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
+          color: Colors.white.withOpacity(0.8),
+          height: 1.3,
         ),
       ),
     );

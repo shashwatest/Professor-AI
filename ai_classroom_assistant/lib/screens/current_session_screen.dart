@@ -6,6 +6,7 @@ import '../services/speech_service.dart';
 import '../services/ai_service.dart';
 import '../services/transcription_trigger.dart';
 import '../widgets/glass_container.dart';
+import '../widgets/glass_snackbar.dart';
 import '../widgets/noise_cancellation_warning_dialog.dart';
 import 'topic_detail_screen.dart';
 import 'notes_screen.dart';
@@ -130,42 +131,124 @@ class _CurrentSessionScreenState extends State<CurrentSessionScreen> with Automa
 
   void _onSpeechError(String error) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Speech error: $error'),
-        duration: const Duration(seconds: 3),
-      ),
+    GlassSnackBar.showError(
+      context,
+      message: 'Speech error: $error',
+      duration: const Duration(seconds: 3),
     );
   }
 
   void _clearTranscription() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Clear Transcription'),
-        content: const Text('Are you sure you want to clear all transcription? This action cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: GlassContainer(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    color: Theme.of(context).colorScheme.primary,
+                    size: 28,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Clear Transcription',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Are you sure you want to clear all transcription? This action cannot be undone.',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Colors.white.withOpacity(0.9),
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.2),
+                      ),
+                    ),
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      ),
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.red.withOpacity(0.8),
+                          Colors.red.withOpacity(0.6),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.red.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        setState(() {
+                          _speechService.clearTranscript();
+                          _liveTranscript = '';
+                          _extractedContent.clear();
+                          _currentSession = null;
+                          _transcriptionTrigger.reset();
+                        });
+                        GlassSnackBar.showSuccess(
+                          context,
+                          message: 'Transcription cleared',
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      ),
+                      child: const Text(
+                        'Clear',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() {
-                _speechService.clearTranscript();
-                _liveTranscript = '';
-                _extractedContent.clear();
-                _currentSession = null;
-                _transcriptionTrigger.reset();
-              });
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Transcription cleared')),
-              );
-            },
-            child: const Text('Clear'),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -248,20 +331,18 @@ class _CurrentSessionScreenState extends State<CurrentSessionScreen> with Automa
       try {
         await SessionStorageService.saveSession(_currentSession!);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Session saved successfully'),
-              duration: Duration(seconds: 2),
-            ),
+          GlassSnackBar.showSuccess(
+            context,
+            message: 'Session saved successfully',
+            duration: const Duration(seconds: 2),
           );
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Session saved locally: ${ErrorHandlerService.getErrorMessage(e)}'),
-              duration: const Duration(seconds: 3),
-            ),
+          GlassSnackBar.showInfo(
+            context,
+            message: 'Session saved locally: ${ErrorHandlerService.getErrorMessage(e)}',
+            duration: const Duration(seconds: 3),
           );
         }
       }
@@ -291,13 +372,12 @@ class _CurrentSessionScreenState extends State<CurrentSessionScreen> with Automa
         }
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(ErrorHandlerService.getErrorMessage(e)),
-          action: SnackBarAction(
-            label: 'Retry',
-            onPressed: _extractTopics,
-          ),
+      GlassSnackBar.showError(
+        context,
+        message: ErrorHandlerService.getErrorMessage(e),
+        action: SnackBarAction(
+          label: 'Retry',
+          onPressed: _extractTopics,
         ),
       );
     } finally {
@@ -320,8 +400,9 @@ class _CurrentSessionScreenState extends State<CurrentSessionScreen> with Automa
           onAddToNotes: (content) {
             if (_currentSession != null) {
               _currentSession!.addToBasicNotes(content);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Added to notes')),
+              GlassSnackBar.showSuccess(
+                context,
+                message: 'Added to notes',
               );
             }
           },

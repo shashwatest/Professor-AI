@@ -5,6 +5,7 @@ import '../services/settings_service.dart';
 import '../services/embeddings/embeddings_factory.dart';
 import '../services/embeddings/embeddings_service.dart';
 import '../widgets/glass_container.dart';
+import '../widgets/glass_snackbar.dart';
 import '../widgets/noise_cancellation_warning_dialog.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -81,14 +82,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await EmbeddingsService.refreshDocumentServiceProvider();
       
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Settings saved successfully')),
+        GlassSnackBar.showSuccess(
+          context,
+          message: 'Settings saved successfully',
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save settings: $e')),
+        GlassSnackBar.showError(
+          context,
+          message: 'Failed to save settings: $e',
         );
       }
     }
@@ -535,10 +538,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           onPressed: () async {
             await NoiseCancellationWarningDialog.resetWarningPreference();
             if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Warning will show again on next transcription'),
-                ),
+              GlassSnackBar.showInfo(
+                context,
+                message: 'Warning will show again on next transcription',
               );
             }
           },

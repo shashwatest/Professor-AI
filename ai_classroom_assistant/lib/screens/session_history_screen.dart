@@ -4,6 +4,7 @@ import '../models/transcription_session.dart';
 import '../services/session_storage_service.dart';
 import '../services/ai_service.dart';
 import '../widgets/glass_container.dart';
+import '../widgets/glass_snackbar.dart';
 import 'notes_screen.dart';
 
 class SessionHistoryScreen extends StatefulWidget {
@@ -42,8 +43,9 @@ class _SessionHistoryScreenState extends State<SessionHistoryScreen> {
         _isLoading = false;
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load sessions: $e')),
+        GlassSnackBar.showError(
+          context,
+          message: 'Failed to load sessions: $e',
         );
       }
     }
@@ -54,14 +56,16 @@ class _SessionHistoryScreenState extends State<SessionHistoryScreen> {
       await SessionStorageService.deleteSession(sessionId);
       await _loadSessions();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Session deleted')),
+        GlassSnackBar.showSuccess(
+          context,
+          message: 'Session deleted',
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete session: $e')),
+        GlassSnackBar.showError(
+          context,
+          message: 'Failed to delete session: $e',
         );
       }
     }

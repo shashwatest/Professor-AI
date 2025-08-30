@@ -11,6 +11,7 @@ import '../services/ai_service.dart';
 import '../services/export_service.dart';
 import '../services/error_handler_service.dart';
 import '../widgets/glass_container.dart';
+import '../widgets/glass_snackbar.dart';
 
 class NotesScreen extends StatefulWidget {
   final TranscriptionSession session;
@@ -83,8 +84,9 @@ class _NotesScreenState extends State<NotesScreen> with TickerProviderStateMixin
       _isEditingBasic = false;
     });
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Basic notes saved')),
+      GlassSnackBar.showSuccess(
+        context,
+        message: 'Basic notes saved',
       );
     }
   }
@@ -95,8 +97,9 @@ class _NotesScreenState extends State<NotesScreen> with TickerProviderStateMixin
       _isEditingAI = false;
     });
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('AI notes saved')),
+      GlassSnackBar.showSuccess(
+        context,
+        message: 'AI notes saved',
       );
     }
   }
@@ -138,14 +141,16 @@ class _NotesScreenState extends State<NotesScreen> with TickerProviderStateMixin
                       try {
                         await ExportService.exportAsText(content, filename);
                         if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Exported as text file')),
+                          GlassSnackBar.showSuccess(
+                            context,
+                            message: 'Exported as text file',
                           );
                         }
                       } catch (e) {
                         if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Export failed: $e')),
+                          GlassSnackBar.showError(
+                            context,
+                            message: 'Export failed: $e',
                           );
                         }
                       }
@@ -158,14 +163,16 @@ class _NotesScreenState extends State<NotesScreen> with TickerProviderStateMixin
                       try {
                         await ExportService.exportAsPDF(content, filename);
                         if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Exported as PDF')),
+                          GlassSnackBar.showSuccess(
+                            context,
+                            message: 'Exported as PDF',
                           );
                         }
                       } catch (e) {
                         if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Export failed: $e')),
+                          GlassSnackBar.showError(
+                            context,
+                            message: 'Export failed: $e',
                           );
                         }
                       }

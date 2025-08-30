@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../services/document_service.dart';
 import '../services/embeddings/embeddings_service.dart';
 import '../widgets/glass_container.dart';
+import '../widgets/glass_snackbar.dart';
 
 class DocumentUploadScreen extends StatefulWidget {
   const DocumentUploadScreen({super.key});
@@ -71,32 +72,100 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
       
       showDialog(
         context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('RAG System Test'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Embeddings Provider: ${status['hasEmbeddingsProvider'] ? '✅' : '❌'}'),
-              Text('Vector Store: ${status['hasVectorStore'] ? '✅' : '❌'}'),
-              Text('Document Chunks: ${status['documentChunksCount']}'),
-              Text('Retrieved Chunks: ${chunks.length}'),
-              const SizedBox(height: 8),
-              Text('Provider Type: ${status['embeddingsProviderType'] ?? 'None'}'),
-              Text('Store Type: ${status['vectorStoreType'] ?? 'None'}'),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('OK'),
+        builder: (context) => Dialog(
+          backgroundColor: Colors.transparent,
+          child: GlassContainer(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.analytics_outlined,
+                      color: Theme.of(context).colorScheme.primary,
+                      size: 28,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'RAG System Test',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.2),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildStatusItem('Embeddings Provider', status['hasEmbeddingsProvider'] ?? false),
+                      _buildStatusItem('Vector Store', status['hasVectorStore'] ?? false),
+                      const SizedBox(height: 8),
+                      _buildInfoItem('Document Chunks', '${status['documentChunksCount']}'),
+                      _buildInfoItem('Retrieved Chunks', '${chunks.length}'),
+                      const SizedBox(height: 8),
+                      _buildInfoItem('Provider Type', status['embeddingsProviderType'] ?? 'None'),
+                      _buildInfoItem('Store Type', status['vectorStoreType'] ?? 'None'),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Theme.of(context).colorScheme.primary.withOpacity(0.8),
+                          Theme.of(context).colorScheme.secondary.withOpacity(0.8),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      ),
+                      child: const Text(
+                        'OK',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('RAG test failed: $e')),
+      GlassSnackBar.showError(
+        context,
+        message: 'RAG test failed: $e',
       );
     }
   }
@@ -361,6 +430,51 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
                   fontWeight: FontWeight.w600,
                 ),
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusItem(String label, bool status) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          Text(
+            '$label: ',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.8),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          Text(
+            status ? '✅' : '❌',
+            style: const TextStyle(fontSize: 16),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoItem(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          Text(
+            '$label: ',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.8),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.9),
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
