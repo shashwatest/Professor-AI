@@ -1,5 +1,7 @@
 # AI Classroom Assistant
 
+[Professor AI](https://drive.google.com/drive/folders/10KX6JqsiDZ6x_5pS9ArIdFxTlk2gJRNE)
+
 A sophisticated cross-platform Flutter app for real-time transcription and AI-powered topic extraction in classroom settings. Features a beautiful glassmorphism UI with advanced speech recognition and intelligent content analysis.
 
 ## ✨ Key Features
