@@ -24,6 +24,10 @@ class SpeechService {
   void Function(bool)? onListeningStateChanged;
   void Function(String)? onTranscriptChanged;
 
+  // Auto-restart functionality
+  bool _shouldAutoRestart = false;
+  Timer? _restartTimer;
+
   // Internal transcript state - using StringBuffer for efficient concatenation
   final StringBuffer _committedBuffer = StringBuffer();
   String _partial = '';
@@ -91,6 +95,7 @@ class SpeechService {
     Duration? pauseFor,
     Duration listenFor = const Duration(minutes: 60),
     bool onDevice = false,
+    bool enableAutoRestart = false,
   }) async {
     if (_isDesktop) {
       onError?.call('Speech recognition is not supported on desktop platforms.');
@@ -109,6 +114,9 @@ class SpeechService {
       _partial = '';
       _emitTranscriptChanged();
     }
+
+    // Set auto-restart flag
+    _shouldAutoRestart = enableAutoRestart;
 
     try {
       await _speechToText.listen(
@@ -129,6 +137,10 @@ class SpeechService {
   Future<void> stopListening() async {
     if (!_isListening) return;
     
+    // Disable auto-restart when manually stopping
+    _shouldAutoRestart = false;
+    _restartTimer?.cancel();
+    
     try {
       await _speechToText.stop();
     } catch (e) {
@@ -139,6 +151,10 @@ class SpeechService {
   /// Cancel listening and clear partials
   Future<void> cancel() async {
     if (!_isListening) return;
+    
+    // Disable auto-restart when cancelling
+    _shouldAutoRestart = false;
+    _restartTimer?.cancel();
     
     try {
       await _speechToText.cancel();
@@ -174,6 +190,7 @@ class SpeechService {
     if (_isListening) {
       cancel();
     }
+    _restartTimer?.cancel();
     // Clear callbacks to prevent memory leaks
     onPartial = null;
     onFinal = null;
@@ -189,6 +206,11 @@ class SpeechService {
     if (_isListening != listening) {
       _isListening = listening;
       onListeningStateChanged?.call(_isListening);
+      
+      // Auto-restart if stopped unexpectedly and auto-restart is enabled
+      if (!listening && _shouldAutoRestart && _isInitialized) {
+        _scheduleRestart();
+      }
     }
   }
 
@@ -265,5 +287,30 @@ class SpeechService {
     if (partial.isEmpty) return committed;
     if (committed.isEmpty) return partial;
     return '$committed $partial';
+  }
+
+  /// Schedule automatic restart with minimal delay
+  void _scheduleRestart() {
+    _restartTimer?.cancel();
+    _restartTimer = Timer(const Duration(milliseconds: 900), () async {
+      if (_shouldAutoRestart && !_isListening && _isInitialized) {
+        try {
+          await _speechToText.listen(
+            onResult: _handleResult,
+            listenFor: const Duration(hours: 2),
+            pauseFor: const Duration(seconds: 3),
+            partialResults: true,
+            cancelOnError: true,
+            listenMode: ListenMode.dictation,
+            onDevice: false,
+          );
+        } catch (e) {
+          // If restart fails, try again after a short delay
+          if (_shouldAutoRestart) {
+            Timer(const Duration(milliseconds: 200), _scheduleRestart);
+          }
+        }
+      }
+    });
   }
 }

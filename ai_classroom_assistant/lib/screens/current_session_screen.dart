@@ -38,6 +38,7 @@ class _CurrentSessionScreenState extends State<CurrentSessionScreen> with Automa
   TranscriptionSession? _currentSession;
   AIService? _aiService;
   bool _isListening = false;
+  bool _continuousMode = false;
   String _educationLevel = 'Undergraduate';
   String _apiKey = '';
   AIProvider _selectedProvider = AIProvider.gemini;
@@ -219,6 +220,7 @@ class _CurrentSessionScreenState extends State<CurrentSessionScreen> with Automa
                       onPressed: () {
                         Navigator.pop(context);
                         setState(() {
+                          _continuousMode = false;
                           _speechService.clearTranscript();
                           _liveTranscript = '';
                           _extractedContent.clear();
@@ -308,18 +310,21 @@ class _CurrentSessionScreenState extends State<CurrentSessionScreen> with Automa
       _speechService.setExistingTranscript(_liveTranscript);
     }
 
-    // Start listening with optimized parameters
+    // Start listening with auto-restart enabled for continuous recording
+    _continuousMode = true;
     await _speechService.startListening(
       resetSessionText: false,
-      //pauseFor: const Duration(milliseconds: 700),
+      pauseFor: const Duration(seconds: 5),
       listenFor: const Duration(hours: 2),
       onDevice: false,
+      enableAutoRestart: true,
     );
   }
 
   Future<void> _stopRecording() async {
-    if (!_isListening) return; // Prevent double-stop
+    if (!_isListening && !_continuousMode) return; // Prevent double-stop
 
+    _continuousMode = false;
     await _speechService.stopListening();
     
     if (_currentSession != null) {
@@ -668,14 +673,14 @@ class _CurrentSessionScreenState extends State<CurrentSessionScreen> with Automa
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: _isListening
+          colors: (_isListening || _continuousMode)
               ? [Colors.green.withOpacity(0.8), Colors.green.withOpacity(0.6)]
               : [Colors.grey.withOpacity(0.8), Colors.grey.withOpacity(0.6)],
         ),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: (_isListening ? Colors.green : Colors.grey).withOpacity(0.3),
+            color: ((_isListening || _continuousMode) ? Colors.green : Colors.grey).withOpacity(0.3),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -685,13 +690,13 @@ class _CurrentSessionScreenState extends State<CurrentSessionScreen> with Automa
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            _isListening ? Icons.mic : Icons.mic_off,
+            (_isListening || _continuousMode) ? Icons.mic : Icons.mic_off,
             size: 16,
             color: Colors.white,
           ),
           const SizedBox(width: 8),
           Text(
-            _isListening ? 'Recording' : 'Stopped',
+            (_isListening || _continuousMode) ? 'Recording' : 'Stopped',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 12,
@@ -713,33 +718,33 @@ class _CurrentSessionScreenState extends State<CurrentSessionScreen> with Automa
                 child: Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: _isListening
+                      colors: (_isListening || _continuousMode)
                           ? [Colors.red.withOpacity(0.8), Colors.red.withOpacity(0.6)]
                           : [Colors.green.withOpacity(0.8), Colors.green.withOpacity(0.6)],
                     ),
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: (_isListening ? Colors.red : Colors.green).withOpacity(0.3),
+                        color: ((_isListening || _continuousMode) ? Colors.red : Colors.green).withOpacity(0.3),
                         blurRadius: 8,
                         offset: const Offset(0, 4),
                       ),
                     ],
                   ),
                   child: ElevatedButton.icon(
-                    onPressed: _isListening ? _stopRecording : _startRecording,
+                    onPressed: (_isListening || _continuousMode) ? _stopRecording : _startRecording,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.transparent,
                       shadowColor: Colors.transparent,
                       padding: const EdgeInsets.all(18),
                     ),
                     icon: Icon(
-                      _isListening ? Icons.stop : Icons.play_arrow,
+                      (_isListening || _continuousMode) ? Icons.stop : Icons.play_arrow,
                       color: Colors.white,
                       size: 24,
                     ),
                     label: Text(
-                      _isListening ? 'Stop Recording' : 'Start Recording',
+                      (_isListening || _continuousMode) ? 'Stop Recording' : 'Start Recording',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,
@@ -792,7 +797,7 @@ class _CurrentSessionScreenState extends State<CurrentSessionScreen> with Automa
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
-              onPressed: _liveTranscript.isNotEmpty && !_isListening ? _clearTranscription : null,
+              onPressed: _liveTranscript.isNotEmpty && !_isListening && !_continuousMode ? _clearTranscription : null,
               icon: const Icon(Icons.clear_all),
               label: const Text('Clear Transcription'),
               style: OutlinedButton.styleFrom(
