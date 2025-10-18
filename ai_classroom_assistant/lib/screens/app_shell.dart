@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../widgets/glass_container.dart';
@@ -118,6 +119,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    return _buildScaffold(context);
+  }
+
+  Widget _buildScaffold(BuildContext context) {
     final isDesktop = MediaQuery.of(context).size.width > 1200;
 
     // Close sidebar when switching from mobile to desktop or vice versa
@@ -128,7 +133,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     });
 
     return Scaffold(
-      // Add keyboard listener for Escape key
       body: Focus(
         autofocus: true,
         onKeyEvent: (node, event) {

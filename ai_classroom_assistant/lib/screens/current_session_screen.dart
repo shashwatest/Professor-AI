@@ -305,19 +305,18 @@ class _CurrentSessionScreenState extends State<CurrentSessionScreen> with Automa
       _transcriptionTrigger.reset();
     });
 
-    // FIXED: Preserve existing transcript when starting new recording session
+    // Preserve existing transcript when starting new recording session
     if (_liveTranscript.isNotEmpty && _speechService.currentTranscript != _liveTranscript) {
       _speechService.setExistingTranscript(_liveTranscript);
     }
 
-    // Start listening with auto-restart enabled for continuous recording
+    // Start listening with indefinite pause duration
     _continuousMode = true;
     await _speechService.startListening(
       resetSessionText: false,
-      pauseFor: const Duration(seconds: 5),
-      listenFor: const Duration(hours: 2),
+      pauseFor: const Duration(days: 365),
+      listenFor: const Duration(days: 365),
       onDevice: false,
-      enableAutoRestart: true,
     );
   }
 

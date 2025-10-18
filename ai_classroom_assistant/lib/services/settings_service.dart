@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'ai_service.dart';
@@ -6,17 +7,32 @@ import 'embeddings/embeddings_factory.dart';
 class SettingsService {
   static const _storage = FlutterSecureStorage();
   
-  // API Keys
+  // API Keys - use SharedPreferences on web, SecureStorage on mobile
   static Future<void> saveAPIKey(AIProvider provider, String key) async {
-    await _storage.write(key: '${provider.name}_api_key', value: key);
+    if (kIsWeb) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('${provider.name}_api_key', key);
+    } else {
+      await _storage.write(key: '${provider.name}_api_key', value: key);
+    }
   }
   
   static Future<String?> getAPIKey(AIProvider provider) async {
-    return await _storage.read(key: '${provider.name}_api_key');
+    if (kIsWeb) {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('${provider.name}_api_key');
+    } else {
+      return await _storage.read(key: '${provider.name}_api_key');
+    }
   }
   
   static Future<void> deleteAPIKey(AIProvider provider) async {
-    await _storage.delete(key: '${provider.name}_api_key');
+    if (kIsWeb) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('${provider.name}_api_key');
+    } else {
+      await _storage.delete(key: '${provider.name}_api_key');
+    }
   }
   
   // Default AI Provider
@@ -73,14 +89,29 @@ class SettingsService {
   
   // Google Project ID (for Google embeddings)
   static Future<void> setGoogleProjectId(String projectId) async {
-    await _storage.write(key: 'google_project_id', value: projectId);
+    if (kIsWeb) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('google_project_id', projectId);
+    } else {
+      await _storage.write(key: 'google_project_id', value: projectId);
+    }
   }
   
   static Future<String?> getGoogleProjectId() async {
-    return await _storage.read(key: 'google_project_id');
+    if (kIsWeb) {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('google_project_id');
+    } else {
+      return await _storage.read(key: 'google_project_id');
+    }
   }
   
   static Future<void> deleteGoogleProjectId() async {
-    await _storage.delete(key: 'google_project_id');
+    if (kIsWeb) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('google_project_id');
+    } else {
+      await _storage.delete(key: 'google_project_id');
+    }
   }
 }
