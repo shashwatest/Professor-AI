@@ -54180,7 +54180,7 @@ n=B.bb(12)
 l=B.df(B.S(51,A.x.m()>>>16&255,A.x.m()>>>8&255,A.x.m()&255),1)
 k=f.ax
 i=k.length!==0
-k=i?k:'Start recording to see live transcription...\n\nTranscription will be preserved when you stop and start recording again. Use "Clear Transcription" to start fresh.'
+k=i?k:'Start recording to see live transcription \n and just so you know, Suman Verma is listening to you...\n\nTranscription will be preserved when you stop and start recording again. Use "Clear Transcription" to start fresh.'
 h=f.c
 if(i){h.toString
 i=B.p(h).ax.k3}else{h.toString
