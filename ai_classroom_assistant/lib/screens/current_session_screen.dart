@@ -839,7 +839,7 @@ class _CurrentSessionScreenState extends State<CurrentSessionScreen> with Automa
               child: Text(
                 _liveTranscript.isNotEmpty 
                     ? _liveTranscript 
-                    : 'Start recording to see live transcription...\n\nTranscription will be preserved when you stop and start recording again. Use "Clear Transcription" to start fresh.',
+                    : 'Start recording to see live transcription \n and just so you know, Suman Verma is listening to you...\n\nTranscription will be preserved when you stop and start recording again. Use "Clear Transcription" to start fresh.',
                 style: TextStyle(
                   fontSize: 16,
                   height: 1.6,
